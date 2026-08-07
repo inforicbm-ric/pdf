@@ -1,0 +1,300 @@
+:root {
+  --bg: #0b1220;
+  --panel: #131c2e;
+  --panel-2: #1a2436;
+  --border: #263349;
+  --text: #e6ebf3;
+  --text-dim: #8b96ab;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --danger: #ef4444;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---------- Toolbar ---------- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.toolbar .divider {
+  width: 1px;
+  height: 26px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.toolbar .spacer { flex: 1; }
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background .15s, border-color .15s;
+}
+
+.btn:hover { background: #223049; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-danger-outline {
+  color: #f87171;
+  border-color: #4b2530;
+}
+.btn-danger-outline:hover { background: #2a1620; }
+
+.btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+}
+.icon-btn:hover { background: #223049; }
+.icon-btn.active { background: var(--accent); border-color: var(--accent); }
+.icon-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.dropdown {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+.dropdown:hover { background: #223049; }
+.dropdown:disabled { opacity: .4; cursor: not-allowed; }
+
+.page-input {
+  width: 46px;
+  text-align: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 7px 4px;
+  font-size: 13px;
+}
+
+.zoom-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  min-width: 42px;
+  text-align: center;
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-group .zoom-label {
+  min-width: 0;
+  text-align: left;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #fff3;
+  cursor: pointer;
+  padding: 0;
+}
+
+.size-slider { width: 90px; }
+
+/* ---------- Layout ---------- */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.body-row {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 190px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.sidebar h4 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.viewer-wrap {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  padding: 24px;
+  background: #05080f;
+}
+
+.page-stage {
+  display: flex;
+  gap: 10px;
+  margin: auto; /* centraliza quando cabe; permite rolar corretamente quando maior que a tela (zoom alto) */
+}
+
+.page-slot {
+  position: relative;
+  line-height: 0;
+  background: #fff;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+}
+
+.page-slot canvas { display: block; }
+.page-slot canvas:first-child { position: relative; z-index: 1; }
+.page-slot canvas:last-child { position: absolute; top: 0; left: 0; z-index: 2; touch-action: none; }
+
+@keyframes pageFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.page-slot.fade-transition {
+  animation: pageFadeIn 2200ms ease-out;
+}
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 40px;
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  max-width: 480px;
+  margin: auto;
+}
+
+.empty-state svg { opacity: .5; }
+.empty-state h2 { color: var(--text); margin: 0; font-size: 18px; }
+.empty-state p { margin: 0; font-size: 13px; }
+
+/* ---------- Status bar ---------- */
+.status-bar {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #4b5666;
+  display: inline-block;
+}
+.status-dot.on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+
+/* ---------- Presentation window ---------- */
+.present-body {
+  position: relative;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.present-stage {
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  line-height: 0;
+}
+
+.present-overlay-btn {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 999;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.present-overlay-btn button {
+  padding: 14px 28px;
+  font-size: 16px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.hidden { display: none !important; }

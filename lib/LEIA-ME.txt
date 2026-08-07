@@ -1,0 +1,41 @@
+Esta pasta precisa conter 2 arquivos da biblioteca PDF.js (Mozilla) para
+o leitor funcionar 100% OFFLINE, sem depender de nenhum CDN externo:
+
+  lib/pdf.mjs
+  lib/pdf.worker.mjs
+
+(Nas versões atuais do PDF.js — v4 em diante — os arquivos são .mjs
+(módulo ES), não mais pdf.min.js/pdf.worker.min.js como em versões antigas.)
+
+COMO BAIXAR (link direto da versão estável atual, v6.2.108):
+
+  https://github.com/mozilla/pdf.js/releases/download/v6.2.108/pdfjs-6.2.108-dist.zip
+
+Se esse link mudar no futuro, pegue o mais atual em:
+  https://mozilla.github.io/pdf.js/getting_started/#download
+  (botão "Stable" em "Prebuilt (modern browsers)")
+
+PASSOS:
+
+1. Baixe e descompacte o zip acima.
+2. Dentro da pasta "build/" do zip, copie os arquivos:
+     pdf.mjs         -> cole em lib/pdf.mjs
+     pdf.worker.mjs  -> cole em lib/pdf.worker.mjs
+   (os arquivos .mjs.map são opcionais, só ajudam a depurar — pode copiar
+   também se quiser, não atrapalham.)
+3. Pronto. Abra o app (via servidor local, veja o README) — o rodapé
+   deve mostrar "PDF.js carregado ✔️".
+
+IMPORTANTE — sobre abrir direto do disco (file://):
+Como esses arquivos são módulos ES (import/export), a maioria dos
+navegadores BLOQUEIA o carregamento deles quando a página é aberta
+direto do disco (file://). Por isso, mesmo para uso 100% local/offline,
+você precisa servir a pasta com um servidor local simples, por exemplo:
+
+  npx serve .
+  # ou
+  python3 -m http.server
+
+e acessar via http://localhost:... — isso não precisa de internet,
+é só o navegador exigindo um "servidor" (mesmo que seja no seu próprio
+computador) para carregar módulos ES corretamente.

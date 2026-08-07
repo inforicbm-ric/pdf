@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Apresentação — PDF</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="present-body">
+
+<div class="present-overlay-btn" id="start-overlay">
+  <div id="overlay-text">Aguardando PDF</div>
+</div>
+
+<div class="present-stage hidden" id="present-stage">
+  <div class="page-slot" id="present-slot-left">
+    <canvas id="present-pdf-canvas"></canvas>
+    <canvas id="present-draw-canvas"></canvas>
+  </div>
+  <div class="page-slot hidden" id="present-slot-right">
+    <canvas id="present-pdf-canvas-2"></canvas>
+    <canvas id="present-draw-canvas-2"></canvas>
+  </div>
+</div>
+
+<script type="module" src="js/pdfjs-init.js"></script>
+<script type="module" src="js/db.js"></script>
+<script type="module" src="js/sync.js"></script>
+<script type="module" src="js/present.js"></script>
+</body>
+</html>
