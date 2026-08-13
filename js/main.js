@@ -310,6 +310,11 @@ function broadcastState(pageChanged = false, overridePageNum = null, scrollOverr
   pages.forEach((p) => (strokesByPage[p] = strokesFor(p)));
   sync.send('state', {
     scale: state.scale,
+    // Percentual relativo ao "ajustar página" DESTA janela — a tela estendida
+    // usa esse número (não o "scale" bruto) para o modo de zoom manual, assim
+    // os dois lados concordam sobre o que é "100%" e não há salto ao trocar
+    // de Ajustar Página para +/-.
+    zoomPercent: state.pageFitScale ? (state.scale / state.pageFitScale) * 100 : 100,
     viewMode: state.viewMode,
     fitMode: state.fitMode,
     transition: state.transition,
@@ -623,6 +628,7 @@ sync.on((msg) => {
     sync.send('sync-state', {
       hasPdf: !!state.pdf,
       scale: state.scale,
+      zoomPercent: state.pageFitScale ? (state.scale / state.pageFitScale) * 100 : 100,
       viewMode: state.viewMode,
       fitMode: state.fitMode,
       transition: state.transition,

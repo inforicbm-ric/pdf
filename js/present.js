@@ -1,7 +1,5 @@
 // present.js — janela de apresentação (fica na tela estendida)
 
-const CONTROL_BASELINE_SCALE = 1.2; // precisa bater com o "100%" usado em main.js
-
 const sync = new SyncBus();
 
 const state = {
@@ -138,9 +136,11 @@ async function renderPage() {
     // (o que for mais restritivo) — nunca corta nada.
     effectiveScale = Math.min(fitScales.scaleX, fitScales.scaleY);
   } else {
-    // Zoom manual (+/-): relativo ao "ajustar página" como base de 100%.
+    // Zoom manual (+/-): usa o percentual relativo ao "ajustar página" que o
+    // controle já calculou para si mesmo — assim os dois lados concordam
+    // sobre o que é "100%" e não há salto ao trocar de Ajustar Página p/ +/-.
     const baseFit = Math.min(fitScales.scaleX, fitScales.scaleY);
-    effectiveScale = baseFit * (state.scale / CONTROL_BASELINE_SCALE);
+    effectiveScale = baseFit * ((state.zoomPercent ?? 100) / 100);
   }
 
   for (let i = 0; i < slots.length; i++) {
@@ -282,6 +282,7 @@ sync.on(async (msg) => {
       if (msg.pageChanged) await fadeOutSlots();
       if (myNav !== navGeneration) return; // uma mensagem mais nova já assumiu
       state.scale = msg.scale;
+      state.zoomPercent = msg.zoomPercent;
       state.viewMode = msg.viewMode;
       state.fitMode = msg.fitMode;
       state.pages = msg.pages;
@@ -326,6 +327,7 @@ sync.on(async (msg) => {
     }
     case 'sync-state': {
       state.scale = msg.scale;
+      state.zoomPercent = msg.zoomPercent;
       state.viewMode = msg.viewMode;
       state.fitMode = msg.fitMode;
       state.transition = msg.transition;
