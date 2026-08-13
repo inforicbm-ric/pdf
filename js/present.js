@@ -187,10 +187,32 @@ function redrawSlot(slot) {
   }
 }
 
+function fadeOutSlots() {
+  if (state.transition !== 'fade') return Promise.resolve();
+  const visibleSlots = slots.filter((s) => s.pageNum != null);
+  if (!visibleSlots.length) return Promise.resolve();
+  return Promise.all(
+    visibleSlots.map(
+      (slot) =>
+        new Promise((resolve) => {
+          slot.root.classList.remove('fade-transition');
+          void slot.root.offsetWidth; // força reflow para reiniciar a animação
+          slot.root.classList.add('fade-out');
+          const onEnd = () => {
+            slot.root.removeEventListener('animationend', onEnd);
+            resolve();
+          };
+          slot.root.addEventListener('animationend', onEnd);
+        })
+    )
+  );
+}
+
 function applyPageChangeFade() {
   if (state.transition !== 'fade') return;
   slots.forEach((slot) => {
     if (slot.pageNum == null) return;
+    slot.root.classList.remove('fade-out');
     slot.root.classList.remove('fade-transition');
     void slot.root.offsetWidth; // força reflow para reiniciar a animação
     slot.root.classList.add('fade-transition');
@@ -261,10 +283,11 @@ sync.on(async (msg) => {
     }
     case 'state': {
       const viewModeChanged = state.viewMode !== msg.viewMode;
+      state.transition = msg.transition; // precisa estar atualizado ANTES do fade-out (usa state.transition)
+      if (msg.pageChanged) await fadeOutSlots();
       state.scale = msg.scale;
       state.viewMode = msg.viewMode;
       state.fitMode = msg.fitMode;
-      state.transition = msg.transition;
       state.pages = msg.pages;
       state.scrollFrac = { x: msg.scrollX, y: msg.scrollY };
       Object.entries(msg.strokesByPage || {}).forEach(([p, strokes]) => state.pageStrokes.set(Number(p), strokes));

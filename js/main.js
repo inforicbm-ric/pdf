@@ -315,10 +315,32 @@ function broadcastState(pageChanged = false) {
   });
 }
 
+function fadeOutSlots() {
+  if (state.transition !== 'fade') return Promise.resolve();
+  const visibleSlots = slots.filter((s) => s.pageNum != null);
+  if (!visibleSlots.length) return Promise.resolve();
+  return Promise.all(
+    visibleSlots.map(
+      (slot) =>
+        new Promise((resolve) => {
+          slot.root.classList.remove('fade-transition');
+          void slot.root.offsetWidth; // força reflow para reiniciar a animação
+          slot.root.classList.add('fade-out');
+          const onEnd = () => {
+            slot.root.removeEventListener('animationend', onEnd);
+            resolve();
+          };
+          slot.root.addEventListener('animationend', onEnd);
+        })
+    )
+  );
+}
+
 function applyPageChangeFade() {
   if (state.transition !== 'fade') return;
   slots.forEach((slot) => {
     if (slot.pageNum == null) return;
+    slot.root.classList.remove('fade-out');
     slot.root.classList.remove('fade-transition');
     void slot.root.offsetWidth; // força reflow para reiniciar a animação
     slot.root.classList.add('fade-transition');
@@ -330,11 +352,12 @@ async function goToPage(n) {
   if (!state.pdf) return;
   n = Math.min(Math.max(1, n), state.numPages);
   if (n === state.pageNum) return;
+  await fadeOutSlots(); // some com a página atual antes de trocar
   state.pageNum = n;
   viewerWrap.scrollTop = 0;
   viewerWrap.scrollLeft = 0;
   await renderPage();
-  applyPageChangeFade();
+  applyPageChangeFade(); // e a nova aparece
   broadcastState(true);
 }
 
