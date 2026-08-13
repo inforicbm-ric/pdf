@@ -40,6 +40,7 @@ slots.forEach((s) => {
 let fitScales = null; // { scaleX, scaleY } calculado 1x por página(s)/resize, usando o tamanho REAL desta tela
 let hasPdfLoaded = false;
 let renderGeneration = 0; // detecta chamadas de renderPage() atropeladas por uma mais nova
+let navGeneration = 0; // detecta mensagens 'state' atropeladas por uma mais nova (cliques rápidos)
 
 // Trava de segurança: canvases muito grandes (em pixels) corrompem ou travam
 // no Chrome. Nunca deixa nenhum lado passar disso, não importa o zoom pedido.
@@ -187,25 +188,18 @@ function redrawSlot(slot) {
   }
 }
 
+const FADE_MS = 180; // precisa bater com a duração no CSS
+
 function fadeOutSlots() {
   if (state.transition !== 'fade') return Promise.resolve();
   const visibleSlots = slots.filter((s) => s.pageNum != null);
   if (!visibleSlots.length) return Promise.resolve();
-  return Promise.all(
-    visibleSlots.map(
-      (slot) =>
-        new Promise((resolve) => {
-          slot.root.classList.remove('fade-transition');
-          void slot.root.offsetWidth; // força reflow para reiniciar a animação
-          slot.root.classList.add('fade-out');
-          const onEnd = () => {
-            slot.root.removeEventListener('animationend', onEnd);
-            resolve();
-          };
-          slot.root.addEventListener('animationend', onEnd);
-        })
-    )
-  );
+  visibleSlots.forEach((slot) => {
+    slot.root.classList.remove('fade-transition');
+    void slot.root.offsetWidth; // força reflow para reiniciar a animação
+    slot.root.classList.add('fade-out');
+  });
+  return new Promise((resolve) => setTimeout(resolve, FADE_MS));
 }
 
 function applyPageChangeFade() {
@@ -282,9 +276,11 @@ sync.on(async (msg) => {
       break;
     }
     case 'state': {
+      const myNav = ++navGeneration;
       const viewModeChanged = state.viewMode !== msg.viewMode;
       state.transition = msg.transition; // precisa estar atualizado ANTES do fade-out (usa state.transition)
       if (msg.pageChanged) await fadeOutSlots();
+      if (myNav !== navGeneration) return; // uma mensagem mais nova já assumiu
       state.scale = msg.scale;
       state.viewMode = msg.viewMode;
       state.fitMode = msg.fitMode;
@@ -295,6 +291,7 @@ sync.on(async (msg) => {
       if (viewModeChanged) fitScales = null;
       if (!state.pdf) await ensurePdfLoaded();
       await renderPage();
+      if (myNav !== navGeneration) return;
       if (msg.pageChanged) applyPageChangeFade();
       break;
     }

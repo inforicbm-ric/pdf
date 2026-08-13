@@ -214,10 +214,10 @@ button {
   to { opacity: 1; }
 }
 .page-slot.fade-out {
-  animation: pageFadeOut 1100ms ease-in forwards;
+  animation: pageFadeOut 180ms ease-in forwards;
 }
 .page-slot.fade-transition {
-  animation: pageFadeIn 1100ms ease-out;
+  animation: pageFadeIn 180ms ease-out;
 }
 
 /* ---------- Empty state ---------- */

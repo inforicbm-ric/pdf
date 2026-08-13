@@ -165,12 +165,15 @@ function enableControls(on) {
 }
 
 // ---------- Rendering ----------
-function visiblePages() {
+function visiblePagesFor(pageNum) {
   if (state.viewMode === 'double') {
-    const right = Math.min(state.pageNum + 1, state.numPages);
-    return right !== state.pageNum ? [state.pageNum, right] : [state.pageNum];
+    const right = Math.min(pageNum + 1, state.numPages);
+    return right !== pageNum ? [pageNum, right] : [pageNum];
   }
-  return [state.pageNum];
+  return [pageNum];
+}
+function visiblePages() {
+  return visiblePagesFor(state.pageNum);
 }
 
 // Trava de segurança: canvases muito grandes (em pixels) corrompem ou travam
@@ -299,8 +302,10 @@ viewerWrap.addEventListener('scroll', () => {
 });
 
 // ---------- Envia o estado completo (página(s), zoom, modo, traços) ----------
-function broadcastState(pageChanged = false) {
-  const pages = visiblePages();
+const FADE_MS = 180; // precisa bater com a duração no CSS
+
+function broadcastState(pageChanged = false, overridePageNum = null, scrollOverride = null) {
+  const pages = overridePageNum != null ? visiblePagesFor(overridePageNum) : visiblePages();
   const strokesByPage = {};
   pages.forEach((p) => (strokesByPage[p] = strokesFor(p)));
   sync.send('state', {
@@ -311,7 +316,7 @@ function broadcastState(pageChanged = false) {
     pageChanged,
     pages,
     strokesByPage,
-    ...getScrollFrac(),
+    ...(scrollOverride || getScrollFrac()),
   });
 }
 
@@ -319,21 +324,12 @@ function fadeOutSlots() {
   if (state.transition !== 'fade') return Promise.resolve();
   const visibleSlots = slots.filter((s) => s.pageNum != null);
   if (!visibleSlots.length) return Promise.resolve();
-  return Promise.all(
-    visibleSlots.map(
-      (slot) =>
-        new Promise((resolve) => {
-          slot.root.classList.remove('fade-transition');
-          void slot.root.offsetWidth; // força reflow para reiniciar a animação
-          slot.root.classList.add('fade-out');
-          const onEnd = () => {
-            slot.root.removeEventListener('animationend', onEnd);
-            resolve();
-          };
-          slot.root.addEventListener('animationend', onEnd);
-        })
-    )
-  );
+  visibleSlots.forEach((slot) => {
+    slot.root.classList.remove('fade-transition');
+    void slot.root.offsetWidth; // força reflow para reiniciar a animação
+    slot.root.classList.add('fade-out');
+  });
+  return new Promise((resolve) => setTimeout(resolve, FADE_MS));
 }
 
 function applyPageChangeFade() {
@@ -348,17 +344,28 @@ function applyPageChangeFade() {
 }
 
 // ---------- Navigation / Zoom ----------
+let navGeneration = 0;
+
 async function goToPage(n) {
   if (!state.pdf) return;
   n = Math.min(Math.max(1, n), state.numPages);
   if (n === state.pageNum) return;
+  const myNav = ++navGeneration;
+
+  // Avisa a tela estendida JÁ, em paralelo com o nosso próprio fade — assim
+  // as duas telas começam a transição praticamente juntas, em vez da tela
+  // estendida só começar depois que o controle já tiver terminado tudo.
+  broadcastState(true, n, { scrollX: 0, scrollY: 0 });
+
   await fadeOutSlots(); // some com a página atual antes de trocar
+  if (myNav !== navGeneration) return; // uma navegação mais nova já assumiu (cliques rápidos)
+
   state.pageNum = n;
   viewerWrap.scrollTop = 0;
   viewerWrap.scrollLeft = 0;
   await renderPage();
+  if (myNav !== navGeneration) return;
   applyPageChangeFade(); // e a nova aparece
-  broadcastState(true);
 }
 
 async function setZoom(s) {
