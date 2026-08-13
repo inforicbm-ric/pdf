@@ -43,7 +43,6 @@ const presentDot = el('present-dot');
 const presentStatus = el('present-status');
 const sidebarFile = el('sidebar-file');
 const viewerWrap = el('viewer-wrap');
-const fitModeSelect = el('fit-mode-select');
 const viewModeSelect = el('view-mode-select');
 const transitionSelect = el('transition-select');
 
@@ -84,14 +83,14 @@ pageInput.addEventListener('change', () => goToPage(parseInt(pageInput.value, 10
 el('btn-zoom-in').addEventListener('click', () => { state.fitMode = null; setZoom(state.scale + 0.15); });
 el('btn-zoom-out').addEventListener('click', () => { state.fitMode = null; setZoom(state.scale - 0.15); });
 
-fitModeSelect.addEventListener('change', (e) => {
-  if (e.target.value === 'width') fitWidth();
-  else fitPage();
-});
-
 el('zoom-select').addEventListener('change', (e) => {
-  const pct = parseFloat(e.target.value);
-  if (!isNaN(pct)) setZoomPercent(pct);
+  const val = e.target.value;
+  if (val === 'fit-page') fitPage();
+  else if (val === 'fit-width') fitWidth();
+  else {
+    const pct = parseFloat(val);
+    if (!isNaN(pct)) setZoomPercent(pct);
+  }
   e.target.value = ''; // volta pro "Ir para..." — o rótulo ao lado mostra o zoom atual
 });
 
@@ -158,7 +157,7 @@ async function loadFile(file) {
 function enableControls(on) {
   [
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
-    'fit-mode-select', 'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
+    'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
     'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
     'btn-redo', 'btn-clear-page', 'btn-present',
   ].forEach((id) => (el(id).disabled = !on));
