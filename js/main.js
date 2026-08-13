@@ -38,7 +38,8 @@ const pageStage = el('page-stage');
 const emptyState = el('empty-state');
 const pageInput = el('page-input');
 const pageTotal = el('page-total');
-const zoomLabel = el('zoom-label');
+const zoomSelect = el('zoom-select');
+const zoomSelectDefaultOption = zoomSelect.querySelector('option[value=""]');
 const presentDot = el('present-dot');
 const presentStatus = el('present-status');
 const sidebarFile = el('sidebar-file');
@@ -83,15 +84,15 @@ pageInput.addEventListener('change', () => goToPage(parseInt(pageInput.value, 10
 el('btn-zoom-in').addEventListener('click', () => { state.fitMode = null; setZoom(state.scale + 0.15); });
 el('btn-zoom-out').addEventListener('click', () => { state.fitMode = null; setZoom(state.scale - 0.15); });
 
-el('zoom-select').addEventListener('change', (e) => {
+zoomSelect.addEventListener('change', async (e) => {
   const val = e.target.value;
-  if (val === 'fit-page') fitPage();
-  else if (val === 'fit-width') fitWidth();
+  if (val === 'fit-page') await fitPage();
+  else if (val === 'fit-width') await fitWidth();
   else {
     const pct = parseFloat(val);
-    if (!isNaN(pct)) setZoomPercent(pct);
+    if (!isNaN(pct)) await setZoomPercent(pct);
   }
-  e.target.value = ''; // volta pro "Ir para..." — o rótulo ao lado mostra o zoom atual
+  e.target.value = ''; // volta a mostrar o percentual atual (opção "Zoom", já atualizada)
 });
 
 viewModeSelect.addEventListener('change', (e) => {
@@ -231,7 +232,7 @@ async function renderPage() {
   pageInput.value = state.pageNum;
   const fit = await computeFitScales();
   state.pageFitScale = fit.page;
-  zoomLabel.textContent = Math.round((state.scale / fit.page) * 100) + '%';
+  zoomSelectDefaultOption.textContent = Math.round((state.scale / fit.page) * 100) + '%';
   requestAnimationFrame(broadcastScroll);
 }
 
