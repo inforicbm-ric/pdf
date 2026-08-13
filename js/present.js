@@ -39,6 +39,7 @@ slots.forEach((s) => {
 
 let fitScales = null; // { scaleX, scaleY } calculado 1x por página(s)/resize, usando o tamanho REAL desta tela
 let hasPdfLoaded = false;
+let renderGeneration = 0; // detecta chamadas de renderPage() atropeladas por uma mais nova
 
 // Trava de segurança: canvases muito grandes (em pixels) corrompem ou travam
 // no Chrome. Nunca deixa nenhum lado passar disso, não importa o zoom pedido.
@@ -119,11 +120,13 @@ async function computeFitScales(pages) {
 
 async function renderPage() {
   if (!state.pdf) return;
+  const myGeneration = ++renderGeneration;
   const pages = state.pages && state.pages.length ? state.pages : [1];
 
   if (fitScales === null) {
     fitScales = await computeFitScales(pages);
   }
+  if (myGeneration !== renderGeneration) return;
 
   let effectiveScale;
   if (state.fitMode === 'width') {
@@ -150,10 +153,25 @@ async function renderPage() {
     slot.root.classList.remove('hidden');
     slot.pageNum = pNum;
     const page = await state.pdf.getPage(pNum);
+    if (myGeneration !== renderGeneration) return;
+
     const viewport = safeViewport(page, effectiveScale);
     slot.pdfCanvas.width = slot.drawCanvas.width = viewport.width;
     slot.pdfCanvas.height = slot.drawCanvas.height = viewport.height;
-    await page.render({ canvasContext: slot.ctxPdf, viewport }).promise;
+
+    // Cancela qualquer desenho anterior ainda em andamento nesse mesmo slot
+    // antes de começar um novo — evita dois desenhos disputando o mesmo canvas.
+    if (slot.renderTask) {
+      try { slot.renderTask.cancel(); } catch (e) { /* ignora */ }
+    }
+    slot.renderTask = page.render({ canvasContext: slot.ctxPdf, viewport });
+    try {
+      await slot.renderTask.promise;
+    } catch (err) {
+      if (err && err.name === 'RenderingCancelledException') return; // uma chamada mais nova assumiu, tudo certo
+      throw err;
+    }
+    if (myGeneration !== renderGeneration) return;
     redrawSlot(slot);
   }
 

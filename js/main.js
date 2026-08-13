@@ -186,8 +186,11 @@ function safeViewport(page, scale) {
   return viewport;
 }
 
+let renderGeneration = 0; // detecta chamadas de renderPage() atropeladas por uma mais nova
+
 async function renderPage() {
   if (!state.pdf) return;
+  const myGeneration = ++renderGeneration;
   const pages = visiblePages();
 
   for (let i = 0; i < slots.length; i++) {
@@ -201,10 +204,25 @@ async function renderPage() {
     slot.root.classList.remove('hidden');
     slot.pageNum = pNum;
     const page = await state.pdf.getPage(pNum);
+    if (myGeneration !== renderGeneration) return; // uma chamada mais nova já assumiu
+
     const viewport = safeViewport(page, state.scale);
     slot.pdfCanvas.width = slot.drawCanvas.width = viewport.width;
     slot.pdfCanvas.height = slot.drawCanvas.height = viewport.height;
-    await page.render({ canvasContext: slot.ctxPdf, viewport }).promise;
+
+    // Cancela qualquer desenho anterior ainda em andamento nesse mesmo slot
+    // antes de começar um novo — evita dois desenhos disputando o mesmo canvas.
+    if (slot.renderTask) {
+      try { slot.renderTask.cancel(); } catch (e) { /* ignora */ }
+    }
+    slot.renderTask = page.render({ canvasContext: slot.ctxPdf, viewport });
+    try {
+      await slot.renderTask.promise;
+    } catch (err) {
+      if (err && err.name === 'RenderingCancelledException') return; // uma chamada mais nova assumiu, tudo certo
+      throw err;
+    }
+    if (myGeneration !== renderGeneration) return;
     redrawSlot(slot);
   }
 
