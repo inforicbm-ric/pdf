@@ -151,7 +151,7 @@ async function loadFile(file) {
   enableControls(true);
   pageTotal.textContent = `/ ${state.numPages}`;
 
-  await renderPage();
+  await fitPage(); // sempre abre no Ajustar Página (100%)
   sync.send('load');
 }
 
