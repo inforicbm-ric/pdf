@@ -170,7 +170,32 @@ button {
   overflow-y: auto;
   font-size: 13px;
   color: var(--text-dim);
+  flex-shrink: 0;
+  transition: width .18s ease, padding .18s ease;
 }
+
+.sidebar.collapsed {
+  width: 30px;
+  padding: 12px 6px;
+  overflow: hidden;
+}
+.sidebar.collapsed .sidebar-content { display: none; }
+
+.sidebar-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+.sidebar-toggle:hover { background: #223049; }
 
 .sidebar h4 {
   margin: 0 0 8px;

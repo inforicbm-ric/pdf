@@ -76,12 +76,15 @@
   </div>
 
   <div class="body-row">
-    <div class="sidebar">
-      <h4>Status</h4>
-      <p id="sidebar-file">Nenhum PDF carregado.</p>
-      <p><span class="status-dot" id="present-dot"></span> <span id="present-status">Tela estendida: fechada</span></p>
-      <h4 style="margin-top:18px">Atalhos</h4>
-      <p>← / → : página<br/>+ / − : zoom<br/>P : caneta<br/>H : destacar<br/>E : borracha</p>
+    <div class="sidebar" id="sidebar">
+      <button class="sidebar-toggle" id="btn-toggle-sidebar" title="Recolher painel">◀</button>
+      <div class="sidebar-content">
+        <h4>Status</h4>
+        <p id="sidebar-file">Nenhum PDF carregado.</p>
+        <p><span class="status-dot" id="present-dot"></span> <span id="present-status">Tela estendida: fechada</span></p>
+        <h4 style="margin-top:18px">Atalhos</h4>
+        <p>← / → : página<br/>+ / − : zoom<br/>P : caneta<br/>H : destacar<br/>E : borracha</p>
+      </div>
     </div>
 
     <div class="viewer-wrap" id="viewer-wrap">

@@ -44,6 +44,12 @@ const zoomSelectDefaultOption = zoomSelect.querySelector('option[value=""]');
 const presentDot = el('present-dot');
 const presentStatus = el('present-status');
 const sidebarFile = el('sidebar-file');
+
+el('btn-toggle-sidebar').addEventListener('click', () => {
+  const collapsed = el('sidebar').classList.toggle('collapsed');
+  el('btn-toggle-sidebar').textContent = collapsed ? '▶' : '◀';
+  el('btn-toggle-sidebar').title = collapsed ? 'Expandir painel' : 'Recolher painel';
+});
 const viewerWrap = el('viewer-wrap');
 const viewModeSelect = el('view-mode-select');
 const transitionSelect = el('transition-select');
