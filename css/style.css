@@ -182,6 +182,9 @@ button {
 
 .viewer-wrap {
   flex: 1;
+  min-width: 0;  /* sem isso, um item flex nunca fica menor que o conteúdo — o painel
+                    "cresce" junto com o zoom em vez de cortar e mostrar a rolagem */
+  min-height: 0;
   overflow: auto;
   display: flex;
   padding: 24px;
