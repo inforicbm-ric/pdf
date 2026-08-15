@@ -135,6 +135,11 @@ button {
 .dropdown:hover { background: #223049; }
 .dropdown:disabled { opacity: .4; cursor: not-allowed; }
 
+#zoom-select {
+  text-align: center;
+  text-align-last: center; /* Firefox usa essa propriedade para o valor selecionado */
+}
+
 .page-input {
   width: 46px;
   text-align: center;
