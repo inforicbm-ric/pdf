@@ -29,6 +29,7 @@ const state = {
   currentHighlightRect: null,
   activeSlot: null,
   presentWindow: null,
+  presentScreenSize: null, // { width, height } da tela estendida real, quando conectada
 };
 
 // ---------- DOM ----------
@@ -384,8 +385,20 @@ async function computeFitScales() {
   const page = await state.pdf.getPage(state.pageNum);
   const naturalViewport = page.getViewport({ scale: 1 });
   const slotsShown = visiblePages().length;
-  const availW = (viewerWrap.clientWidth - 48 - (slotsShown - 1) * 10) / slotsShown;
-  const availH = viewerWrap.clientHeight - 48;
+
+  let availW, availH;
+  if (state.presentScreenSize) {
+    // Usa o tamanho REAL da tela estendida como referência (não a janelinha
+    // de pré-visualização do controle) — assim o controle "estoura" e mostra
+    // rolagem exatamente quando a tela estendida também estoura, permitindo
+    // controlar a posição dela por aqui.
+    availW = (state.presentScreenSize.width - (slotsShown - 1) * 10) / slotsShown;
+    availH = state.presentScreenSize.height;
+  } else {
+    availW = (viewerWrap.clientWidth - 48 - (slotsShown - 1) * 10) / slotsShown;
+    availH = viewerWrap.clientHeight - 48;
+  }
+
   return {
     width: availW / naturalViewport.width,
     page: Math.min(availW / naturalViewport.width, availH / naturalViewport.height),
@@ -584,6 +597,16 @@ function clearPage() {
 }
 
 // ---------- Presentation window (tela estendida) ----------
+async function refitAfterScreenChange() {
+  if (!state.pdf) return;
+  if (state.fitMode === 'width') await fitWidth();
+  else if (state.fitMode === 'page') await fitPage();
+  else {
+    await renderPage(); // zoom manual: mantém o percentual, só recalcula a referência
+    broadcastState();
+  }
+}
+
 async function openPresentation() {
   const base = location.href.replace(/index\.html?$/, '');
   const url = base + 'present.html';
@@ -595,7 +618,9 @@ async function openPresentation() {
       const target = details.screens.find((s) => s !== current) || details.screens[0];
       const features = `left=${target.availLeft},top=${target.availTop},width=${target.availWidth},height=${target.availHeight},menubar=no,toolbar=no,location=no,status=no`;
       state.presentWindow = window.open(url, 'pdfPresentWindow', features);
+      state.presentScreenSize = { width: target.availWidth, height: target.availHeight };
       el('btn-close-present').disabled = false;
+      await refitAfterScreenChange();
       return;
     } catch (err) {
       console.warn('getScreenDetails falhou, usando modo manual:', err);
@@ -604,7 +629,10 @@ async function openPresentation() {
 
   alert('Seu navegador não permite detectar telas automaticamente (funciona no Chrome/Edge). A janela vai abrir agora — arraste-a para a segunda tela e clique nela para iniciar a tela cheia.');
   state.presentWindow = window.open(url, 'pdfPresentWindow', 'width=1280,height=800');
+  // Sem detecção automática, assume um tamanho comum de monitor (Full HD) como referência.
+  state.presentScreenSize = { width: 1920, height: 1080 };
   el('btn-close-present').disabled = false;
+  await refitAfterScreenChange();
 }
 
 el('btn-close-present').addEventListener('click', () => {
@@ -612,9 +640,11 @@ el('btn-close-present').addEventListener('click', () => {
     state.presentWindow.close();
   }
   state.presentWindow = null;
+  state.presentScreenSize = null;
   el('btn-close-present').disabled = true;
   presentDot.classList.remove('on');
   presentStatus.textContent = 'Tela estendida: fechada';
+  refitAfterScreenChange();
 });
 
 sync.on((msg) => {
@@ -641,6 +671,9 @@ sync.on((msg) => {
     presentDot.classList.remove('on');
     presentStatus.textContent = 'Tela estendida: fechada';
     el('btn-close-present').disabled = true;
+    state.presentWindow = null;
+    state.presentScreenSize = null;
+    refitAfterScreenChange();
   }
   if (msg.type === 'fullscreen-state') {
     presentStatus.textContent = msg.active
