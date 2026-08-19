@@ -137,7 +137,12 @@ button {
 
 #zoom-select {
   text-align: center;
-  text-align-last: center; /* Firefox usa essa propriedade para o valor selecionado */
+  text-align-last: center;
+}
+#zoom-select option {
+  text-align: left;
+  color: #000;
+  background: #fff;
 }
 
 .page-input {
