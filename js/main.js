@@ -117,7 +117,16 @@ el('tool-select').addEventListener('click', () => setTool('select'));
 el('tool-pen').addEventListener('click', () => setTool('pen'));
 el('tool-highlight').addEventListener('click', () => setTool('highlight'));
 el('tool-eraser').addEventListener('click', () => setTool('eraser'));
-el('pen-color').addEventListener('input', (e) => (state.color = e.target.value));
+el('pen-color').addEventListener('input', (e) => {
+  state.color = e.target.value;
+  // Atualiza a cor do ícone de gota/balde em tempo real
+  document.querySelector('.color-label').style.setProperty('--pen-preview-color', e.target.value);
+});
+
+// Abre o seletor nativo ao clicar no label (o input está escondido)
+document.querySelector('.color-label').addEventListener('click', () => {
+  if (!el('pen-color').disabled) el('pen-color').click();
+});
 el('pen-size').addEventListener('input', (e) => (state.size = parseInt(e.target.value, 10)));
 
 el('btn-undo').addEventListener('click', undo);
@@ -449,6 +458,7 @@ function setTool(tool) {
   if (tool === 'highlight' && el('pen-color').value === '#ff3b30') {
     el('pen-color').value = '#ffeb3b';
     state.color = '#ffeb3b';
+    document.querySelector('.color-label').style.setProperty('--pen-preview-color', '#ffeb3b');
   }
 }
 setTool('select');
