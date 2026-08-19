@@ -30,6 +30,8 @@ const state = {
   activeSlot: null,
   presentWindow: null,
   presentScreenSize: null, // { width, height } da tela estendida real, quando conectada
+  zoomAreaActive: false,   // modo "Zoom de Área" ativo
+  zoomAreaDrag: null,      // { slot, startX, startY, x, y } durante o arraste
 };
 
 // ---------- DOM ----------
@@ -93,13 +95,18 @@ el('btn-zoom-out').addEventListener('click', () => { state.fitMode = null; setZo
 
 zoomSelect.addEventListener('change', async (e) => {
   const val = e.target.value;
-  if (val === 'fit-page') await fitPage();
-  else if (val === 'fit-width') await fitWidth();
+  if (val === 'fit-page') { exitZoomArea(); await fitPage(); }
+  else if (val === 'fit-width') { exitZoomArea(); await fitWidth(); }
+  else if (val === 'zoom-area') {
+    enterZoomArea();
+    return; // não reseta o select — mantém mostrando "Zoom de Área"
+  }
   else {
+    exitZoomArea();
     const pct = parseFloat(val);
     if (!isNaN(pct)) await setZoomPercent(pct);
   }
-  e.target.value = ''; // volta a mostrar o percentual atual (opção "Zoom", já atualizada)
+  e.target.value = ''; // volta a mostrar o percentual atual
 });
 
 viewModeSelect.addEventListener('change', (e) => {
@@ -138,10 +145,11 @@ el('btn-present').addEventListener('click', openPresentation);
 document.addEventListener('keydown', (e) => {
   if (!state.pdf) return;
   if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape' && state.zoomAreaActive) { exitZoomArea(); return; }
   if (e.key === 'ArrowRight') goToPage(state.pageNum + pageStep());
   if (e.key === 'ArrowLeft') goToPage(state.pageNum - pageStep());
-  if (e.key === '+' || e.key === '=') { state.fitMode = null; setZoom(state.scale + 0.15); }
-  if (e.key === '-') { state.fitMode = null; setZoom(state.scale - 0.15); }
+  if (e.key === '+' || e.key === '=') { exitZoomArea(); state.fitMode = null; setZoom(state.scale + 0.15); }
+  if (e.key === '-') { exitZoomArea(); state.fitMode = null; setZoom(state.scale - 0.15); }
   if (e.key.toLowerCase() === 'p') setTool('pen');
   if (e.key.toLowerCase() === 'h') setTool('highlight');
   if (e.key.toLowerCase() === 'e') setTool('eraser');
@@ -447,7 +455,133 @@ async function setZoomPercent(pct) {
   await setZoom(fit.page * (pct / 100));
 }
 
-// ---------- Tools ----------
+// ---------- Zoom de Área ----------
+function enterZoomArea() {
+  state.zoomAreaActive = true;
+  viewerWrap.style.cursor = 'crosshair';
+  zoomSelectDefaultOption.textContent = '🔍 Zoom de Área';
+}
+
+function exitZoomArea() {
+  if (!state.zoomAreaActive) return;
+  state.zoomAreaActive = false;
+  state.zoomAreaDrag = null;
+  viewerWrap.style.cursor = '';
+  // Remove o canvas de prévia se existir
+  const overlay = document.getElementById('zoom-area-overlay');
+  if (overlay) overlay.remove();
+  // Reseta o label do select para o zoom atual
+  const fit = state.pageFitScale;
+  if (fit) {
+    zoomSelectDefaultOption.textContent = Math.round((state.scale / fit) * 100) + '%';
+  } else {
+    zoomSelectDefaultOption.textContent = 'Zoom';
+  }
+  zoomSelect.value = '';
+}
+
+// Canvas de prévia do retângulo de seleção de área
+function getOrCreateZoomAreaCanvas() {
+  let c = document.getElementById('zoom-area-overlay');
+  if (!c) {
+    c = document.createElement('canvas');
+    c.id = 'zoom-area-overlay';
+    c.style.cssText = 'position:fixed;top:0;left:0;pointer-events:none;z-index:9999;';
+    document.body.appendChild(c);
+  }
+  c.width = window.innerWidth;
+  c.height = window.innerHeight;
+  return c;
+}
+
+function drawZoomAreaPreview(x1, y1, x2, y2) {
+  const c = getOrCreateZoomAreaCanvas();
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  const rx = Math.min(x1, x2), ry = Math.min(y1, y2);
+  const rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+  ctx.save();
+  ctx.fillStyle = 'rgba(59,130,246,0.12)';
+  ctx.fillRect(rx, ry, rw, rh);
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 3]);
+  ctx.strokeRect(rx, ry, rw, rh);
+  ctx.restore();
+}
+
+viewerWrap.addEventListener('pointerdown', (e) => {
+  if (!state.zoomAreaActive || !state.pdf) return;
+  e.preventDefault();
+  state.zoomAreaDrag = { startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY };
+  viewerWrap.setPointerCapture(e.pointerId);
+});
+
+viewerWrap.addEventListener('pointermove', (e) => {
+  if (!state.zoomAreaActive || !state.zoomAreaDrag) return;
+  state.zoomAreaDrag.x = e.clientX;
+  state.zoomAreaDrag.y = e.clientY;
+  drawZoomAreaPreview(
+    state.zoomAreaDrag.startX, state.zoomAreaDrag.startY,
+    state.zoomAreaDrag.x, state.zoomAreaDrag.y
+  );
+});
+
+viewerWrap.addEventListener('pointerup', async (e) => {
+  if (!state.zoomAreaActive || !state.zoomAreaDrag) return;
+  const { startX, startY, x: endX, y: endY } = state.zoomAreaDrag;
+  state.zoomAreaDrag = null;
+
+  // Remove prévia
+  const overlay = document.getElementById('zoom-area-overlay');
+  if (overlay) overlay.remove();
+
+  // Rejeita retângulos muito pequenos (clique acidental)
+  const selW = Math.abs(endX - startX);
+  const selH = Math.abs(endY - startY);
+  if (selW < 10 || selH < 10) { exitZoomArea(); return; }
+
+  // Converte as coordenadas de tela para coordenadas normalizadas dentro do canvas do PDF
+  const activeSlot = slots.find((s) => s.pageNum != null);
+  if (!activeSlot) { exitZoomArea(); return; }
+  const canvasRect = activeSlot.pdfCanvas.getBoundingClientRect();
+
+  // Região selecionada em pixels do canvas
+  const rx1 = Math.min(startX, endX) - canvasRect.left;
+  const ry1 = Math.min(startY, endY) - canvasRect.top;
+  const rx2 = Math.max(startX, endX) - canvasRect.left;
+  const ry2 = Math.max(startY, endY) - canvasRect.top;
+
+  // Calcula o zoom necessário para a região selecionada preencher o viewer
+  const scaleRatio = Math.min(
+    viewerWrap.clientWidth / (rx2 - rx1),
+    viewerWrap.clientHeight / (ry2 - ry1)
+  );
+  const newScale = state.scale * scaleRatio;
+
+  // Calcula a posição de rolagem para centralizar a área selecionada
+  // (em proporção do canvas atual, para aplicar depois do novo renderPage)
+  const fracX = (rx1 + (rx2 - rx1) / 2) / canvasRect.width;
+  const fracY = (ry1 + (ry2 - ry1) / 2) / canvasRect.height;
+
+  exitZoomArea();
+  state.fitMode = null;
+  state.scale = Math.min(Math.max(0.05, newScale), 18);
+  await renderPage();
+
+  // Centraliza a rolagem no ponto focal escolhido
+  const newSlot = slots.find((s) => s.pageNum != null);
+  if (newSlot) {
+    const targetX = fracX * newSlot.pdfCanvas.width - viewerWrap.clientWidth / 2;
+    const targetY = fracY * newSlot.pdfCanvas.height - viewerWrap.clientHeight / 2;
+    viewerWrap.scrollLeft = Math.max(0, targetX);
+    viewerWrap.scrollTop = Math.max(0, targetY);
+  }
+
+  broadcastState();
+});
+
+
 function setTool(tool) {
   state.tool = tool;
   ['select', 'pen', 'highlight', 'eraser'].forEach((t) =>
