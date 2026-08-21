@@ -458,7 +458,7 @@ async function setZoomPercent(pct) {
 // ---------- Zoom de Área ----------
 function enterZoomArea() {
   state.zoomAreaActive = true;
-  viewerWrap.style.cursor = 'crosshair';
+  viewerWrap.style.cursor = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\'%3E%3Cline x1=\'12\' y1=\'2\' x2=\'12\' y2=\'22\' stroke=\'black\' stroke-width=\'2\'/%3E%3Cline x1=\'2\' y1=\'12\' x2=\'22\' y2=\'12\' stroke=\'black\' stroke-width=\'2\'/%3E%3C/svg%3E") 12 12, crosshair';
   zoomSelectDefaultOption.textContent = '🔍 Zoom de Área';
 }
 
