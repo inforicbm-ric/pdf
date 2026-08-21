@@ -396,3 +396,68 @@ button {
 }
 
 .hidden { display: none !important; }
+
+/* ---------- Miniaturas de páginas ---------- */
+.thumb-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.thumb-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  transition: border-color .12s;
+}
+.thumb-item:hover { border-color: var(--border); }
+.thumb-item.active { border-color: var(--accent); }
+
+.thumb-item canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  background: #fff;
+}
+
+.thumb-item span {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.thumb-item.active span { color: var(--accent); }
+
+/* ---------- Tela em branco/preta (apresentação) ---------- */
+.present-blank {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: rgba(255,255,255,.15);
+  letter-spacing: .05em;
+  cursor: pointer;
+}
+
+/* Ponteiro laser na tela estendida */
+.laser-dot {
+  position: fixed;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #ff2200 40%, rgba(255,34,0,0) 100%);
+  box-shadow: 0 0 8px 4px rgba(255,34,0,.6);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: opacity .1s;
+}

@@ -47,6 +47,55 @@ const presentDot = el('present-dot');
 const presentStatus = el('present-status');
 const sidebarFile = el('sidebar-file');
 
+// ---------- Blank Screen (tela preta/branca) ----------
+let blankMode = 'off'; // 'off' | 'black' | 'white'
+el('btn-blank-screen').addEventListener('click', () => {
+  blankMode = blankMode === 'off' ? 'black' : blankMode === 'black' ? 'white' : 'off';
+  const btn = el('btn-blank-screen');
+  if (blankMode === 'off') {
+    btn.textContent = '⬛ Pausar Tela';
+    btn.classList.remove('active');
+  } else if (blankMode === 'black') {
+    btn.textContent = '⬛ Tela Preta';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '⬜ Tela Branca';
+    btn.classList.add('active');
+  }
+  sync.send('blank-screen', { mode: blankMode });
+});
+
+// ---------- Ponteiro Laser ----------
+let laserActive = false;
+
+el('tool-laser').addEventListener('mousedown', () => startLaser());
+el('tool-laser').addEventListener('touchstart', () => startLaser());
+document.addEventListener('mouseup', stopLaser);
+document.addEventListener('touchend', stopLaser);
+
+function startLaser() {
+  laserActive = true;
+  el('tool-laser').classList.add('active');
+}
+function stopLaser() {
+  if (!laserActive) return;
+  laserActive = false;
+  el('tool-laser').classList.remove('active');
+  sync.send('laser', { active: false });
+}
+
+// Rastreia o mouse na área do PDF e transmite posição normalizada para a tela estendida
+document.addEventListener('mousemove', (e) => {
+  if (!laserActive || !state.presentWindow || state.presentWindow.closed) return;
+  // Converte posição do mouse para proporção da tela (0-1) —
+  // a tela estendida usa essa proporção para posicionar o ponto no seu próprio tamanho
+  const x = e.clientX / window.innerWidth;
+  const y = e.clientY / window.innerHeight;
+  sync.send('laser', { active: true, x, y });
+});
+
+
+
 el('btn-toggle-sidebar').addEventListener('click', () => {
   const collapsed = el('sidebar').classList.toggle('collapsed');
   el('btn-toggle-sidebar').textContent = collapsed ? '▶' : '◀';
@@ -154,6 +203,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'h') setTool('highlight');
   if (e.key.toLowerCase() === 'e') setTool('eraser');
   if (e.key.toLowerCase() === 'v') setTool('select');
+  if (e.key.toLowerCase() === 'l') { startLaser(); }
 });
 
 // ---------- Load PDF ----------
@@ -176,6 +226,7 @@ async function loadFile(file) {
   pageTotal.textContent = `/ ${state.numPages}`;
 
   await fitPage(); // sempre abre no Ajustar Página (100%)
+  generateThumbnails();
   sync.send('load');
 }
 
@@ -183,9 +234,56 @@ function enableControls(on) {
   [
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
-    'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
+    'tool-highlight', 'tool-eraser', 'tool-laser', 'pen-color', 'pen-size', 'btn-undo',
     'btn-redo', 'btn-clear-page', 'btn-present',
   ].forEach((id) => (el(id).disabled = !on));
+}
+
+// ---------- Miniaturas de páginas ----------
+const THUMB_SCALE = 0.15;
+const thumbCanvas = []; // cache de canvases já gerados
+
+async function generateThumbnails() {
+  const container = el('thumb-container');
+  container.innerHTML = '';
+  thumbCanvas.length = 0;
+
+  for (let i = 1; i <= state.numPages; i++) {
+    const item = document.createElement('div');
+    item.className = 'thumb-item' + (i === state.pageNum ? ' active' : '');
+    item.dataset.page = i;
+
+    const canvas = document.createElement('canvas');
+    item.appendChild(canvas);
+
+    const label = document.createElement('span');
+    label.textContent = i;
+    item.appendChild(label);
+
+    item.addEventListener('click', () => goToPage(i));
+    container.appendChild(item);
+    thumbCanvas.push({ canvas, page: i, rendered: false });
+
+    // Renderiza de forma assíncrona e progressiva (não trava a UI)
+    renderThumb(i, canvas);
+  }
+}
+
+async function renderThumb(pageNum, canvas) {
+  const page = await state.pdf.getPage(pageNum);
+  const viewport = page.getViewport({ scale: THUMB_SCALE });
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+}
+
+function updateThumbActive() {
+  el('thumb-container').querySelectorAll('.thumb-item').forEach((item) => {
+    item.classList.toggle('active', parseInt(item.dataset.page) === state.pageNum);
+    if (item.classList.contains('active')) {
+      item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
 }
 
 // ---------- Rendering ----------
@@ -395,6 +493,7 @@ async function goToPage(n) {
   await renderPage();
   if (myNav !== navGeneration) return;
   applyPageChangeFade(); // e a nova aparece
+  updateThumbActive();
 }
 
 async function setZoom(s) {
@@ -792,6 +891,10 @@ el('btn-close-present').addEventListener('click', () => {
   state.presentWindow = null;
   state.presentScreenSize = null;
   el('btn-close-present').disabled = true;
+  // Reseta o botão de blank screen
+  blankMode = 'off';
+  el('btn-blank-screen').textContent = '⬛ Pausar Tela';
+  el('btn-blank-screen').classList.remove('active');
   presentDot.classList.remove('on');
   presentStatus.textContent = 'Tela estendida: fechada';
   refitAfterScreenChange();

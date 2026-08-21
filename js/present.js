@@ -300,6 +300,30 @@ sync.on(async (msg) => {
       state.transition = msg.mode;
       break;
     }
+    case 'blank-screen': {
+      const blankEl = document.getElementById('present-blank');
+      if (msg.mode === 'off') {
+        blankEl.classList.add('hidden');
+      } else {
+        blankEl.style.background = msg.mode === 'black' ? '#000' : '#fff';
+        blankEl.textContent = msg.mode === 'black' ? 'B' : 'W';
+        blankEl.style.color = msg.mode === 'black' ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+        blankEl.classList.remove('hidden');
+      }
+      break;
+    }
+    case 'laser': {
+      const dot = document.getElementById('laser-dot');
+      if (!msg.active) {
+        dot.classList.add('hidden');
+      } else {
+        dot.classList.remove('hidden');
+        // Converte a posição normalizada (0-1) para pixels desta tela
+        dot.style.left = (msg.x * window.innerWidth) + 'px';
+        dot.style.top = (msg.y * window.innerHeight) + 'px';
+      }
+      break;
+    }
     case 'scroll': {
       state.scrollFrac = { x: msg.scrollX, y: msg.scrollY };
       applyStagePosition();
