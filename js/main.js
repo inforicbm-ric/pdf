@@ -48,21 +48,31 @@ const presentStatus = el('present-status');
 const sidebarFile = el('sidebar-file');
 
 // ---------- Blank Screen (tela preta/branca) ----------
-let blankMode = 'off'; // 'off' | 'black' | 'white'
+let blankMode = 'off';   // 'off' | 'on'
+let blankColor = 'black'; // 'black' | 'white'
+
 el('btn-blank-screen').addEventListener('click', () => {
-  blankMode = blankMode === 'off' ? 'black' : blankMode === 'black' ? 'white' : 'off';
+  blankMode = blankMode === 'off' ? 'on' : 'off';
   const btn = el('btn-blank-screen');
+  const colorBtn = el('btn-blank-color');
   if (blankMode === 'off') {
-    btn.textContent = '⬛ Pausar Tela';
+    btn.textContent = '⏸ Pausar Tela';
     btn.classList.remove('active');
-  } else if (blankMode === 'black') {
-    btn.textContent = '⬛ Tela Preta';
-    btn.classList.add('active');
+    colorBtn.classList.add('hidden');
+    sync.send('blank-screen', { mode: 'off' });
   } else {
-    btn.textContent = '⬜ Tela Branca';
+    btn.textContent = '▶ Retomar Tela';
     btn.classList.add('active');
+    colorBtn.classList.remove('hidden');
+    sync.send('blank-screen', { mode: blankColor });
   }
-  sync.send('blank-screen', { mode: blankMode });
+});
+
+el('btn-blank-color').addEventListener('click', () => {
+  blankColor = blankColor === 'black' ? 'white' : 'black';
+  el('btn-blank-color').textContent = blankColor === 'black' ? '⬛' : '⬜';
+  el('btn-blank-color').title = blankColor === 'black' ? 'Mudar para tela branca' : 'Mudar para tela preta';
+  if (blankMode === 'on') sync.send('blank-screen', { mode: blankColor });
 });
 
 // ---------- Ponteiro Laser ----------
@@ -85,15 +95,25 @@ function stopLaser() {
   sync.send('laser', { active: false });
 }
 
-// Rastreia o mouse na área do viewer e transmite posição para a tela estendida.
-// Usa posição relativa ao viewerWrap para que o ponto apareça corretamente
-// proporcional ao conteúdo exibido na tela estendida.
+// Rastreia o mouse e envia a posição RELATIVA AO CANVAS DO PDF (proporção 0-1).
+// A tela estendida usa essa mesma proporção dentro do seu próprio canvas,
+// garantindo que o ponto apareça no mesmo lugar do conteúdo independente
+// do tamanho de cada monitor.
 document.addEventListener('mousemove', (e) => {
   if (!laserActive) return;
   if (!state.presentWindow || state.presentWindow.closed) { stopLaser(); return; }
-  const x = e.clientX / window.innerWidth;
-  const y = e.clientY / window.innerHeight;
-  sync.send('laser', { active: true, x, y });
+
+  // Tenta usar o canvas da primeira página visível como referência
+  const activeSlot = slots.find((s) => s.pageNum != null);
+  if (!activeSlot) return;
+
+  const rect = activeSlot.pdfCanvas.getBoundingClientRect();
+  // Posição normalizada dentro do canvas (pode ficar fora de [0,1] se o mouse
+  // sair da área do PDF — mandamos mesmo assim, a tela estendida vai receber
+  // e mostrar fora da página, o que é ok para apontar elementos na borda)
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  sync.send('laser', { active: true, x, y, page: activeSlot.pageNum });
 });
 
 
@@ -902,8 +922,9 @@ el('btn-close-present').addEventListener('click', () => {
   stopLaser();
   // Reseta o botão de blank screen
   blankMode = 'off';
-  el('btn-blank-screen').textContent = '⬛ Pausar Tela';
+  el('btn-blank-screen').textContent = '⏸ Pausar Tela';
   el('btn-blank-screen').classList.remove('active');
+  el('btn-blank-color').classList.add('hidden');
   presentDot.classList.remove('on');
   presentStatus.textContent = 'Tela estendida: fechada';
   refitAfterScreenChange();

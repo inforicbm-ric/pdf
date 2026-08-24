@@ -317,10 +317,16 @@ sync.on(async (msg) => {
       if (!msg.active) {
         dot.classList.add('hidden');
       } else {
+        // Converte a posição normalizada dentro do canvas do PDF (0-1)
+        // para pixels desta tela estendida, usando o canvas real desta janela.
+        const activeSlot = slots.find((s) => s.pageNum === msg.page) || slots.find((s) => s.pageNum != null);
+        if (!activeSlot) break;
+        const rect = activeSlot.pdfCanvas.getBoundingClientRect();
+        const px = rect.left + msg.x * rect.width;
+        const py = rect.top + msg.y * rect.height;
         dot.classList.remove('hidden');
-        // Converte a posição normalizada (0-1) para pixels desta tela
-        dot.style.left = (msg.x * window.innerWidth) + 'px';
-        dot.style.top = (msg.y * window.innerHeight) + 'px';
+        dot.style.left = px + 'px';
+        dot.style.top = py + 'px';
       }
       break;
     }
