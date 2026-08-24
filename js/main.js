@@ -68,27 +68,29 @@ el('btn-blank-screen').addEventListener('click', () => {
 // ---------- Ponteiro Laser ----------
 let laserActive = false;
 
-el('tool-laser').addEventListener('mousedown', () => startLaser());
-el('tool-laser').addEventListener('touchstart', () => startLaser());
-document.addEventListener('mouseup', stopLaser);
-document.addEventListener('touchend', stopLaser);
+// O botão laser funciona como toggle — clica pra ligar, clica de novo pra desligar.
+// Não usamos mousedown/mouseup porque botões disabled bloqueiam esses eventos.
+el('tool-laser').addEventListener('click', () => {
+  laserActive = !laserActive;
+  if (laserActive) {
+    el('tool-laser').classList.add('active');
+  } else {
+    stopLaser();
+  }
+});
 
-function startLaser() {
-  laserActive = true;
-  el('tool-laser').classList.add('active');
-}
 function stopLaser() {
-  if (!laserActive) return;
   laserActive = false;
   el('tool-laser').classList.remove('active');
   sync.send('laser', { active: false });
 }
 
-// Rastreia o mouse na área do PDF e transmite posição normalizada para a tela estendida
+// Rastreia o mouse na área do viewer e transmite posição para a tela estendida.
+// Usa posição relativa ao viewerWrap para que o ponto apareça corretamente
+// proporcional ao conteúdo exibido na tela estendida.
 document.addEventListener('mousemove', (e) => {
-  if (!laserActive || !state.presentWindow || state.presentWindow.closed) return;
-  // Converte posição do mouse para proporção da tela (0-1) —
-  // a tela estendida usa essa proporção para posicionar o ponto no seu próprio tamanho
+  if (!laserActive) return;
+  if (!state.presentWindow || state.presentWindow.closed) { stopLaser(); return; }
   const x = e.clientX / window.innerWidth;
   const y = e.clientY / window.innerHeight;
   sync.send('laser', { active: true, x, y });
@@ -203,7 +205,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'h') setTool('highlight');
   if (e.key.toLowerCase() === 'e') setTool('eraser');
   if (e.key.toLowerCase() === 'v') setTool('select');
-  if (e.key.toLowerCase() === 'l') { startLaser(); }
+  if (e.key.toLowerCase() === 'l') { el('tool-laser').click(); }
 });
 
 // ---------- Load PDF ----------
@@ -234,19 +236,18 @@ function enableControls(on) {
   [
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
-    'tool-highlight', 'tool-eraser', 'tool-laser', 'pen-color', 'pen-size', 'btn-undo',
-    'btn-redo', 'btn-clear-page', 'btn-present',
+    'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
+    'btn-redo', 'btn-clear-page', 'btn-present', 'btn-blank-screen',
   ].forEach((id) => (el(id).disabled = !on));
+  // tool-laser é habilitado separadamente quando a tela estendida está conectada
 }
 
 // ---------- Miniaturas de páginas ----------
-const THUMB_SCALE = 0.15;
-const thumbCanvas = []; // cache de canvases já gerados
+const THUMB_SCALE = 0.28; // escala maior = mais nítido na sidebar de 190px de largura
 
 async function generateThumbnails() {
   const container = el('thumb-container');
   container.innerHTML = '';
-  thumbCanvas.length = 0;
 
   for (let i = 1; i <= state.numPages; i++) {
     const item = document.createElement('div');
@@ -262,19 +263,25 @@ async function generateThumbnails() {
 
     item.addEventListener('click', () => goToPage(i));
     container.appendChild(item);
-    thumbCanvas.push({ canvas, page: i, rendered: false });
 
-    // Renderiza de forma assíncrona e progressiva (não trava a UI)
-    renderThumb(i, canvas);
+    // Renderiza progressivamente para não travar a UI
+    setTimeout(() => renderThumb(i, canvas), i * 40);
   }
 }
 
 async function renderThumb(pageNum, canvas) {
-  const page = await state.pdf.getPage(pageNum);
-  const viewport = page.getViewport({ scale: THUMB_SCALE });
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  try {
+    const page = await state.pdf.getPage(pageNum);
+    // Usa a largura real do canvas CSS (sidebar tem 190px - 2*padding - 2*border)
+    // mas renderiza em escala maior para ficar nítido em telas de alta densidade (retina/HiDPI)
+    const naturalVp = page.getViewport({ scale: 1 });
+    const targetW = 150; // largura alvo em px lógicos
+    const scale = targetW / naturalVp.width;
+    const viewport = page.getViewport({ scale });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  } catch (e) { /* página pode ter sido trocada durante a renderização — ignora */ }
 }
 
 function updateThumbActive() {
@@ -891,6 +898,8 @@ el('btn-close-present').addEventListener('click', () => {
   state.presentWindow = null;
   state.presentScreenSize = null;
   el('btn-close-present').disabled = true;
+  el('tool-laser').disabled = true;
+  stopLaser();
   // Reseta o botão de blank screen
   blankMode = 'off';
   el('btn-blank-screen').textContent = '⬛ Pausar Tela';
@@ -905,6 +914,7 @@ sync.on((msg) => {
     presentDot.classList.add('on');
     presentStatus.textContent = 'Tela estendida: conectada (clique nela para tela cheia)';
     el('btn-close-present').disabled = false;
+    el('tool-laser').disabled = false;
     const pages = visiblePages();
     const strokesByPage = {};
     pages.forEach((p) => (strokesByPage[p] = strokesFor(p)));
@@ -924,6 +934,8 @@ sync.on((msg) => {
     presentDot.classList.remove('on');
     presentStatus.textContent = 'Tela estendida: fechada';
     el('btn-close-present').disabled = true;
+    el('tool-laser').disabled = true;
+    stopLaser();
     state.presentWindow = null;
     state.presentScreenSize = null;
     refitAfterScreenChange();
