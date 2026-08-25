@@ -317,13 +317,13 @@ sync.on(async (msg) => {
       if (!msg.active) {
         dot.classList.add('hidden');
       } else {
-        // Converte a posição normalizada dentro do canvas do PDF (0-1)
-        // para pixels desta tela estendida, usando o canvas real desta janela.
         const activeSlot = slots.find((s) => s.pageNum === msg.page) || slots.find((s) => s.pageNum != null);
         if (!activeSlot) break;
+        // Usa o getBoundingClientRect do canvas DESTA janela (tela estendida)
+        // que já leva em conta a posição real do canvas no fullscreen.
         const rect = activeSlot.pdfCanvas.getBoundingClientRect();
-        const px = rect.left + msg.x * rect.width;
-        const py = rect.top + msg.y * rect.height;
+        const px = rect.left + msg.fracX * rect.width;
+        const py = rect.top + msg.fracY * rect.height;
         dot.classList.remove('hidden');
         dot.style.left = px + 'px';
         dot.style.top = py + 'px';

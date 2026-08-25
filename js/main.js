@@ -103,17 +103,17 @@ document.addEventListener('mousemove', (e) => {
   if (!laserActive) return;
   if (!state.presentWindow || state.presentWindow.closed) { stopLaser(); return; }
 
-  // Tenta usar o canvas da primeira página visível como referência
   const activeSlot = slots.find((s) => s.pageNum != null);
   if (!activeSlot) return;
 
   const rect = activeSlot.pdfCanvas.getBoundingClientRect();
-  // Posição normalizada dentro do canvas (pode ficar fora de [0,1] se o mouse
-  // sair da área do PDF — mandamos mesmo assim, a tela estendida vai receber
-  // e mostrar fora da página, o que é ok para apontar elementos na borda)
-  const x = (e.clientX - rect.left) / rect.width;
-  const y = (e.clientY - rect.top) / rect.height;
-  sync.send('laser', { active: true, x, y, page: activeSlot.pageNum });
+  // Proporção da posição do mouse dentro do canvas visível (0 a 1).
+  // Usamos o tamanho visual (getBoundingClientRect) no controle, e a tela
+  // estendida usa o mesmo cálculo com o SEU rect — como ambos renderizam
+  // a mesma página com a mesma proporção de aspecto, os pontos batem.
+  const fracX = (e.clientX - rect.left) / rect.width;
+  const fracY = (e.clientY - rect.top) / rect.height;
+  sync.send('laser', { active: true, fracX, fracY, page: activeSlot.pageNum });
 });
 
 
@@ -257,9 +257,9 @@ function enableControls(on) {
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
     'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
-    'btn-redo', 'btn-clear-page', 'btn-present', 'btn-blank-screen',
+    'btn-redo', 'btn-clear-page', 'btn-present',
   ].forEach((id) => (el(id).disabled = !on));
-  // tool-laser é habilitado separadamente quando a tela estendida está conectada
+  // btn-blank-screen e tool-laser só ficam habilitados quando a tela estendida está conectada
 }
 
 // ---------- Miniaturas de páginas ----------
@@ -919,6 +919,7 @@ el('btn-close-present').addEventListener('click', () => {
   state.presentScreenSize = null;
   el('btn-close-present').disabled = true;
   el('tool-laser').disabled = true;
+  el('btn-blank-screen').disabled = true;
   stopLaser();
   // Reseta o botão de blank screen
   blankMode = 'off';
@@ -936,6 +937,7 @@ sync.on((msg) => {
     presentStatus.textContent = 'Tela estendida: conectada (clique nela para tela cheia)';
     el('btn-close-present').disabled = false;
     el('tool-laser').disabled = false;
+    el('btn-blank-screen').disabled = false;
     const pages = visiblePages();
     const strokesByPage = {};
     pages.forEach((p) => (strokesByPage[p] = strokesFor(p)));
@@ -956,7 +958,12 @@ sync.on((msg) => {
     presentStatus.textContent = 'Tela estendida: fechada';
     el('btn-close-present').disabled = true;
     el('tool-laser').disabled = true;
+    el('btn-blank-screen').disabled = true;
+    el('btn-blank-color').classList.add('hidden');
     stopLaser();
+    blankMode = 'off';
+    el('btn-blank-screen').textContent = '⏸ Pausar Tela';
+    el('btn-blank-screen').classList.remove('active');
     state.presentWindow = null;
     state.presentScreenSize = null;
     refitAfterScreenChange();
