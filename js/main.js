@@ -144,6 +144,51 @@ fileInput.addEventListener('change', (e) => {
   if (e.target.files[0]) loadFile(e.target.files[0]);
 });
 
+el('btn-close-pdf').addEventListener('click', () => {
+  if (!state.pdf) return;
+  if (!confirm('Fechar o PDF atual? As anotações não salvas serão perdidas.')) return;
+  closePdf();
+});
+
+function closePdf() {
+  state.pdf = null;
+  state.fileName = '';
+  state.numPages = 0;
+  state.pageNum = 1;
+  state.scale = 1.2;
+  state.fitMode = 'page';
+  state.pageStrokes.clear();
+  state.redoStacks.clear();
+  state.pageFitScale = null;
+
+  // Limpa a UI do controle
+  pageStage.classList.add('hidden');
+  emptyState.classList.remove('hidden');
+  sidebarFile.textContent = 'Nenhum PDF carregado.';
+  el('thumb-container').innerHTML = '';
+  pageTotal.textContent = '/ 0';
+  pageInput.value = 1;
+  zoomSelectDefaultOption.textContent = 'Zoom';
+  zoomSelect.value = '';
+
+  // Desabilita controles (mantém btn-present e btn-close-present no estado atual)
+  [
+    'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
+    'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
+    'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
+    'btn-redo', 'btn-clear-page', 'btn-close-pdf',
+  ].forEach((id) => (el(id).disabled = true));
+
+  // Avisa a tela estendida para limpar também
+  sync.send('pdf-closed');
+  exitZoomArea();
+}
+
+// Quando o controle recarregar ou fechar a aba, avisa a tela estendida
+window.addEventListener('beforeunload', () => {
+  sync.send('control-unloading');
+});
+
 ['dragover', 'dragenter'].forEach((ev) =>
   document.body.addEventListener(ev, (e) => e.preventDefault())
 );
@@ -257,7 +302,7 @@ function enableControls(on) {
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
     'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
-    'btn-redo', 'btn-clear-page', 'btn-present',
+    'btn-redo', 'btn-clear-page', 'btn-present', 'btn-close-pdf',
   ].forEach((id) => (el(id).disabled = !on));
   // btn-blank-screen e tool-laser só ficam habilitados quando a tela estendida está conectada
 }
