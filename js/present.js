@@ -271,7 +271,6 @@ sync.on(async (msg) => {
   switch (msg.type) {
     case 'pdf-closed':
     case 'control-unloading': {
-      // Limpa a tela estendida e volta ao estado inicial
       slots.forEach((slot) => {
         slot.root.classList.add('hidden');
         slot.pageNum = null;
@@ -283,14 +282,13 @@ sync.on(async (msg) => {
       state.liveStrokes.clear();
       fitScales = null;
       hasPdfLoaded = false;
-      // Volta ao overlay de espera
       overlayText.textContent = 'Aguardando PDF';
       overlay.classList.remove('hidden');
       stage.classList.add('hidden');
-      // Sai do fullscreen se estiver
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       break;
     }
+    case 'load': {
       const ok = await ensurePdfLoaded();
       fitScales = null;
       if (ok && state.pages) await renderPage();
