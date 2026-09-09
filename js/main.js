@@ -139,15 +139,20 @@ slots.forEach((s) => {
 });
 
 // ---------- Toolbar wiring ----------
-el('btn-open').addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', (e) => {
-  if (e.target.files[0]) loadFile(e.target.files[0]);
+// ---------- Toggle PDF ----------
+const btnPdfToggle = el('btn-pdf-toggle');
+
+btnPdfToggle.addEventListener('click', () => {
+  if (!state.pdf) {
+    fileInput.click();
+  } else {
+    if (!confirm('Fechar o PDF atual? As anotações não salvas serão perdidas.')) return;
+    closePdf();
+  }
 });
 
-el('btn-close-pdf').addEventListener('click', () => {
-  if (!state.pdf) return;
-  if (!confirm('Fechar o PDF atual? As anotações não salvas serão perdidas.')) return;
-  closePdf();
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
 });
 
 function closePdf() {
@@ -161,7 +166,12 @@ function closePdf() {
   state.redoStacks.clear();
   state.pageFitScale = null;
 
-  // Limpa a UI do controle
+  // Reseta o botão toggle PDF
+  btnPdfToggle.textContent = '📄 Abrir PDF';
+  btnPdfToggle.classList.remove('btn-danger-outline');
+  btnPdfToggle.classList.add('btn-primary');
+
+  // Limpa a UI
   pageStage.classList.add('hidden');
   emptyState.classList.remove('hidden');
   sidebarFile.textContent = 'Nenhum PDF carregado.';
@@ -171,15 +181,14 @@ function closePdf() {
   zoomSelectDefaultOption.textContent = 'Zoom';
   zoomSelect.value = '';
 
-  // Desabilita controles (mantém btn-present e btn-close-present no estado atual)
+  // Desabilita controles (btn-present-toggle mantém o estado atual)
   [
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
     'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
-    'btn-redo', 'btn-clear-page', 'btn-close-pdf',
+    'btn-redo', 'btn-clear-page',
   ].forEach((id) => (el(id).disabled = true));
 
-  // Avisa a tela estendida para limpar também
   sync.send('pdf-closed');
   exitZoomArea();
 }
@@ -256,7 +265,35 @@ el('btn-undo').addEventListener('click', undo);
 el('btn-redo').addEventListener('click', redo);
 el('btn-clear-page').addEventListener('click', clearPage);
 
-el('btn-present').addEventListener('click', openPresentation);
+// ---------- Toggle Tela Estendida ----------
+const btnPresentToggle = el('btn-present-toggle');
+
+btnPresentToggle.addEventListener('click', () => {
+  if (!state.presentWindow || state.presentWindow.closed) {
+    openPresentation();
+  } else {
+    closePresentation();
+  }
+});
+
+function closePresentation() {
+  if (state.presentWindow && !state.presentWindow.closed) state.presentWindow.close();
+  state.presentWindow = null;
+  state.presentScreenSize = null;
+  btnPresentToggle.textContent = '🖥️ Tela Estendida';
+  btnPresentToggle.classList.remove('btn-danger-outline');
+  btnPresentToggle.classList.add('btn-primary');
+  el('tool-laser').disabled = true;
+  el('btn-blank-screen').disabled = true;
+  stopLaser();
+  blankMode = 'off';
+  el('btn-blank-screen').textContent = '⏸ Pausar Tela';
+  el('btn-blank-screen').classList.remove('active');
+  el('btn-blank-color').classList.add('hidden');
+  presentDot.classList.remove('on');
+  presentStatus.textContent = 'Tela estendida: fechada';
+  refitAfterScreenChange();
+}
 
 document.addEventListener('keydown', (e) => {
   if (!state.pdf) return;
@@ -292,7 +329,12 @@ async function loadFile(file) {
   enableControls(true);
   pageTotal.textContent = `/ ${state.numPages}`;
 
-  await fitPage(); // sempre abre no Ajustar Página (100%)
+  // Muda o botão toggle para "✕ Fechar PDF"
+  btnPdfToggle.textContent = '✕ Fechar PDF';
+  btnPdfToggle.classList.remove('btn-primary');
+  btnPdfToggle.classList.add('btn-danger-outline');
+
+  await fitPage();
   generateThumbnails();
   sync.send('load');
 }
@@ -302,9 +344,9 @@ function enableControls(on) {
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
     'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
-    'btn-redo', 'btn-clear-page', 'btn-present', 'btn-close-pdf',
+    'btn-redo', 'btn-clear-page', 'btn-present-toggle',
   ].forEach((id) => (el(id).disabled = !on));
-  // btn-blank-screen e tool-laser só ficam habilitados quando a tela estendida está conectada
+  // btn-blank-screen e tool-laser só habilitados quando a tela estendida está conectada
 }
 
 // ---------- Miniaturas de páginas ----------
@@ -940,7 +982,6 @@ async function openPresentation() {
       const features = `left=${target.availLeft},top=${target.availTop},width=${target.availWidth},height=${target.availHeight},menubar=no,toolbar=no,location=no,status=no`;
       state.presentWindow = window.open(url, 'pdfPresentWindow', features);
       state.presentScreenSize = { width: target.availWidth, height: target.availHeight };
-      el('btn-close-present').disabled = false;
       await refitAfterScreenChange();
       return;
     } catch (err) {
@@ -950,37 +991,18 @@ async function openPresentation() {
 
   alert('Seu navegador não permite detectar telas automaticamente (funciona no Chrome/Edge). A janela vai abrir agora — arraste-a para a segunda tela e clique nela para iniciar a tela cheia.');
   state.presentWindow = window.open(url, 'pdfPresentWindow', 'width=1280,height=800');
-  // Sem detecção automática, assume um tamanho comum de monitor (Full HD) como referência.
   state.presentScreenSize = { width: 1920, height: 1080 };
-  el('btn-close-present').disabled = false;
   await refitAfterScreenChange();
 }
-
-el('btn-close-present').addEventListener('click', () => {
-  if (state.presentWindow && !state.presentWindow.closed) {
-    state.presentWindow.close();
-  }
-  state.presentWindow = null;
-  state.presentScreenSize = null;
-  el('btn-close-present').disabled = true;
-  el('tool-laser').disabled = true;
-  el('btn-blank-screen').disabled = true;
-  stopLaser();
-  // Reseta o botão de blank screen
-  blankMode = 'off';
-  el('btn-blank-screen').textContent = '⏸ Pausar Tela';
-  el('btn-blank-screen').classList.remove('active');
-  el('btn-blank-color').classList.add('hidden');
-  presentDot.classList.remove('on');
-  presentStatus.textContent = 'Tela estendida: fechada';
-  refitAfterScreenChange();
-});
 
 sync.on((msg) => {
   if (msg.type === 'present-ready') {
     presentDot.classList.add('on');
     presentStatus.textContent = 'Tela estendida: conectada (clique nela para tela cheia)';
-    el('btn-close-present').disabled = false;
+    // Muda o toggle para "✕ Fechar Tela"
+    btnPresentToggle.textContent = '✕ Fechar Tela';
+    btnPresentToggle.classList.remove('btn-primary');
+    btnPresentToggle.classList.add('btn-danger-outline');
     el('tool-laser').disabled = false;
     el('btn-blank-screen').disabled = false;
     const pages = visiblePages();
@@ -1001,7 +1023,9 @@ sync.on((msg) => {
   if (msg.type === 'present-closed') {
     presentDot.classList.remove('on');
     presentStatus.textContent = 'Tela estendida: fechada';
-    el('btn-close-present').disabled = true;
+    btnPresentToggle.textContent = '🖥️ Tela Estendida';
+    btnPresentToggle.classList.remove('btn-danger-outline');
+    btnPresentToggle.classList.add('btn-primary');
     el('tool-laser').disabled = true;
     el('btn-blank-screen').disabled = true;
     el('btn-blank-color').classList.add('hidden');
