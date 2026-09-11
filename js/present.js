@@ -190,25 +190,31 @@ function redrawSlot(slot) {
 
 const FADE_MS = 180; // precisa bater com a duração no CSS
 
+function clearFadeClasses() {
+  slots.forEach((slot) => {
+    slot.root.classList.remove('fade-out');
+    slot.root.classList.remove('fade-transition');
+  });
+}
+
 function fadeOutSlots() {
+  clearFadeClasses(); // sempre limpa antes, independente do modo
   if (state.transition !== 'fade') return Promise.resolve();
   const visibleSlots = slots.filter((s) => s.pageNum != null);
   if (!visibleSlots.length) return Promise.resolve();
   visibleSlots.forEach((slot) => {
-    slot.root.classList.remove('fade-transition');
-    void slot.root.offsetWidth; // força reflow para reiniciar a animação
+    void slot.root.offsetWidth; // força reflow
     slot.root.classList.add('fade-out');
   });
   return new Promise((resolve) => setTimeout(resolve, FADE_MS));
 }
 
 function applyPageChangeFade() {
+  clearFadeClasses(); // remove fade-out antes de aplicar fade-in
   if (state.transition !== 'fade') return;
   slots.forEach((slot) => {
     if (slot.pageNum == null) return;
-    slot.root.classList.remove('fade-out');
-    slot.root.classList.remove('fade-transition');
-    void slot.root.offsetWidth; // força reflow para reiniciar a animação
+    void slot.root.offsetWidth; // força reflow
     slot.root.classList.add('fade-transition');
   });
 }

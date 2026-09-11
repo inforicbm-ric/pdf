@@ -61,6 +61,15 @@
       <option value="single">📄 Página Única</option>
       <option value="double">📖 Duas Páginas</option>
     </select>
+
+    <div class="divider"></div>
+
+    <button class="btn" id="btn-blank-screen" title="Pausar/retomar a tela estendida" disabled>⏸ Pausar Tela</button>
+    <button class="icon-btn btn-blank-color hidden" id="btn-blank-color" title="Alternar tela preta / tela branca">⬛</button>
+    <select class="dropdown" id="transition-select" title="Transição de página — escolha o efeito ao trocar de página" disabled>
+      <option value="fade">✨ Fade</option>
+      <option value="instant">⚡ Seco</option>
+    </select>
   </div>
 
   <div class="toolbar toolbar-secondary">
@@ -112,8 +121,6 @@
 
     <div class="divider"></div>
 
-    <button class="btn" id="btn-blank-screen" title="Pausar/retomar a tela estendida" disabled>⏸ Pausar Tela</button>
-    <button class="icon-btn btn-blank-color hidden" id="btn-blank-color" title="Alternar tela preta / tela branca">⬛</button>
     <button class="icon-btn" id="tool-laser" title="Ponteiro Laser — clique para ligar/desligar (atalho: L)" disabled>
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="6" y="7" width="9" height="4" rx="2" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.3"/>
@@ -123,10 +130,6 @@
         <circle cx="2" cy="9" r="0.7" fill="#fff" opacity="0.8"/>
       </svg>
     </button>
-    <select class="dropdown" id="transition-select" title="Transição de página — escolha o efeito ao trocar de página" disabled>
-      <option value="fade">✨ Fade</option>
-      <option value="instant">⚡ Seco</option>
-    </select>
   </div>
 
   <div class="body-row">
