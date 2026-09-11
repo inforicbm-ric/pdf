@@ -236,6 +236,17 @@ zoomSelect.addEventListener('change', async (e) => {
 
 viewModeSelect.addEventListener('change', (e) => {
   state.viewMode = e.target.value;
+  if (state.viewMode === 'double' && state.pdf) {
+    // Se a página atual for par e não houver próxima, volta uma para que
+    // a página da direita tenha espaço — evita ficar "preso" na última página.
+    if (state.pageNum === state.numPages && state.numPages > 1) {
+      // Se numPages for ímpar, a última página já é válida como lado esquerdo.
+      // Se for par, precisa recuar para o penúltimo par (ímpar anterior).
+      if (state.pageNum % 2 === 0) {
+        state.pageNum = Math.max(1, state.pageNum - 1);
+      }
+    }
+  }
   renderPage();
   broadcastState();
 });
@@ -403,8 +414,11 @@ function updateThumbActive() {
 // ---------- Rendering ----------
 function visiblePagesFor(pageNum) {
   if (state.viewMode === 'double') {
-    const right = Math.min(pageNum + 1, state.numPages);
-    return right !== pageNum ? [pageNum, right] : [pageNum];
+    // No modo duplo, a página da esquerda deve ser sempre ímpar (como um livro).
+    // Se pageNum for par, recua para o ímpar anterior.
+    const left = pageNum % 2 === 0 ? Math.max(1, pageNum - 1) : pageNum;
+    const right = Math.min(left + 1, state.numPages);
+    return right !== left ? [left, right] : [left];
   }
   return [pageNum];
 }
