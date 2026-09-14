@@ -28,6 +28,7 @@ const state = {
   currentStroke: null,
   currentHighlightRect: null,
   activeSlot: null,
+  lastActivePageNum: null, // última página onde o usuário desenhou (pode ser direita no modo duplo)
   presentWindow: null,
   presentScreenSize: null, // { width, height } da tela estendida real, quando conectada
   zoomAreaActive: false,   // modo "Zoom de Área" ativo
@@ -941,6 +942,7 @@ function onPointerDown(e, slot) {
   if (!state.pdf || state.tool === 'select' || slot.pageNum == null) return;
   state.drawing = true;
   state.activeSlot = slot;
+  state.lastActivePageNum = slot.pageNum;
   slot.drawCanvas.setPointerCapture(e.pointerId);
   const { x, y } = normPoint(e, slot.drawCanvas);
 
@@ -1015,33 +1017,44 @@ function eraseAt(slot, x, y) {
   }
 }
 
+function activePageNum() {
+  // Usa a última página onde o usuário desenhou, ou a página principal
+  return state.lastActivePageNum || state.pageNum;
+}
+
 function undo() {
-  const strokes = strokesFor(state.pageNum);
+  const pNum = activePageNum();
+  const strokes = strokesFor(pNum);
   if (!strokes.length) return;
   const removed = strokes.pop();
-  if (!state.redoStacks.has(state.pageNum)) state.redoStacks.set(state.pageNum, []);
-  state.redoStacks.get(state.pageNum).push(removed);
-  const slot = slotForPage(state.pageNum);
+  if (!state.redoStacks.has(pNum)) state.redoStacks.set(pNum, []);
+  state.redoStacks.get(pNum).push(removed);
+  const slot = slotForPage(pNum);
   if (slot) redrawSlot(slot);
-  sync.send('set-page-strokes', { page: state.pageNum, strokes });
+  sync.send('set-page-strokes', { page: pNum, strokes });
 }
 
 function redo() {
-  const redoStack = state.redoStacks.get(state.pageNum) || [];
+  const pNum = activePageNum();
+  const redoStack = state.redoStacks.get(pNum) || [];
   if (!redoStack.length) return;
   const stroke = redoStack.pop();
-  strokesFor(state.pageNum).push(stroke);
-  const slot = slotForPage(state.pageNum);
+  strokesFor(pNum).push(stroke);
+  const slot = slotForPage(pNum);
   if (slot) redrawSlot(slot);
-  sync.send('set-page-strokes', { page: state.pageNum, strokes: strokesFor(state.pageNum) });
+  sync.send('set-page-strokes', { page: pNum, strokes: strokesFor(pNum) });
 }
 
 function clearPage() {
-  state.pageStrokes.set(state.pageNum, []);
-  state.redoStacks.set(state.pageNum, []);
-  const slot = slotForPage(state.pageNum);
-  if (slot) redrawSlot(slot);
-  sync.send('set-page-strokes', { page: state.pageNum, strokes: [] });
+  // No modo duplo, limpa as duas páginas visíveis
+  const pages = visiblePages();
+  pages.forEach((pNum) => {
+    state.pageStrokes.set(pNum, []);
+    state.redoStacks.set(pNum, []);
+    const slot = slotForPage(pNum);
+    if (slot) redrawSlot(slot);
+    sync.send('set-page-strokes', { page: pNum, strokes: [] });
+  });
 }
 
 // ---------- Presentation window (tela estendida) ----------
