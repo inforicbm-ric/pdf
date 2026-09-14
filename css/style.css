@@ -468,3 +468,210 @@ button {
   width: 32px;
   height: 32px;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   RIBBON
+═══════════════════════════════════════════════════════════ */
+.ribbon-tabs {
+  display: flex;
+  align-items: center;
+  background: #0d1929;
+  border-bottom: 1px solid var(--border);
+  padding: 0 8px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ribbon-tab {
+  padding: 7px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .12s, border-color .12s;
+  letter-spacing: .03em;
+}
+.ribbon-tab:hover { color: var(--text); }
+.ribbon-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.ribbon-spacer { flex: 1; }
+
+.ribbon-filename {
+  font-size: 12px;
+  color: var(--text-dim);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ribbon-collapse-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: background .12s;
+}
+.ribbon-collapse-btn:hover { background: var(--panel-2); }
+
+/* Painel da ribbon */
+.ribbon-panel {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-height: 58px;
+}
+.ribbon-panel.active { display: flex; }
+
+/* Quando ribbon estiver recolhida */
+.ribbon-collapsed .ribbon-panel { display: none !important; }
+.ribbon-collapsed .ribbon-collapse-btn { transform: rotate(180deg); }
+
+.ribbon-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.ribbon-section-btns {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ribbon-section-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ribbon-sep {
+  width: 1px;
+  height: 42px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.ribbon-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.ribbon-slider-label {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BARRA DE RODAPÉ
+═══════════════════════════════════════════════════════════ */
+.footer-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  height: 36px;
+  background: #0d1929;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.footer-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.footer-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  font-family: inherit;
+}
+.footer-btn:hover { background: var(--panel-2); border-color: var(--border); }
+.footer-btn:disabled { opacity: .35; cursor: not-allowed; }
+.footer-btn.active { color: var(--accent); }
+
+.footer-page-input {
+  width: 38px;
+  text-align: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 3px 2px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.footer-page-input:disabled { opacity: .35; }
+
+.footer-page-total {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.footer-zoom-select {
+  height: 24px;
+  padding: 0 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  text-align-last: center;
+  min-width: 90px;
+}
+.footer-zoom-select:disabled { opacity: .35; cursor: not-allowed; }
+.footer-zoom-select option { text-align: left; color: #000; background: #fff; }
+
+.footer-mode-btn { font-size: 11px; letter-spacing: -1px; }
+
+.footer-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.footer-spacer { flex: 1; }
+
+.footer-status {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Remover barras antigas (toolbar/status-bar) */
+.toolbar, .toolbar-secondary, .status-bar { display: none !important; }

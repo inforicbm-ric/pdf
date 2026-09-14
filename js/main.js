@@ -47,6 +47,96 @@ const presentDot = el('present-dot');
 const presentStatus = el('present-status');
 const sidebarFile = el('sidebar-file');
 
+// ---------- Ribbon — abas e recolher ----------
+document.querySelectorAll('.ribbon-tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    const tabId = tab.dataset.tab;
+    // Remove active de todas as abas e painéis
+    document.querySelectorAll('.ribbon-tab').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.ribbon-panel').forEach((p) => p.classList.remove('active'));
+    tab.classList.add('active');
+    el('tab-' + tabId).classList.add('active');
+    // Ao clicar numa aba, garante que a ribbon está expandida
+    document.querySelector('.app').classList.remove('ribbon-collapsed');
+    el('btn-collapse-ribbon').textContent = '▲';
+  });
+});
+
+el('btn-collapse-ribbon').addEventListener('click', () => {
+  const app = document.querySelector('.app');
+  const collapsed = app.classList.toggle('ribbon-collapsed');
+  el('btn-collapse-ribbon').textContent = collapsed ? '▼' : '▲';
+});
+
+// Duplo clique na aba ativa recolhe a ribbon
+document.querySelectorAll('.ribbon-tab').forEach((tab) => {
+  tab.addEventListener('dblclick', () => {
+    const app = document.querySelector('.app');
+    const collapsed = app.classList.toggle('ribbon-collapsed');
+    el('btn-collapse-ribbon').textContent = collapsed ? '▼' : '▲';
+  });
+});
+
+// ---------- Botões do rodapé — modo de página ----------
+el('footer-single').addEventListener('click', () => {
+  if (!state.pdf) return;
+  el('view-mode-select').value = 'single';
+  el('view-mode-select').dispatchEvent(new Event('change'));
+});
+el('footer-double').addEventListener('click', () => {
+  if (!state.pdf) return;
+  el('view-mode-select').value = 'double';
+  el('view-mode-select').dispatchEvent(new Event('change'));
+});
+
+// Sincroniza os botões do rodapé com o select de modo
+function syncFooterModeButtons() {
+  el('footer-single').classList.toggle('active', state.viewMode === 'single');
+  el('footer-double').classList.toggle('active', state.viewMode === 'double');
+}
+
+// ---------- Aba Apresentar — espelhar controles ----------
+// btn-present-toggle-2 espelha btn-present-toggle
+el('btn-present-toggle-2').addEventListener('click', () => el('btn-present-toggle').click());
+// btn-blank-screen-2 espelha btn-blank-screen
+el('btn-blank-screen-2').addEventListener('click', () => el('btn-blank-screen').click());
+el('btn-blank-color-2').addEventListener('click', () => el('btn-blank-color').click());
+// view-mode-select-2 espelha view-mode-select
+el('view-mode-select-2').addEventListener('change', (e) => {
+  el('view-mode-select').value = e.target.value;
+  el('view-mode-select').dispatchEvent(new Event('change'));
+});
+// transition-select-2 espelha transition-select
+el('transition-select-2').addEventListener('change', (e) => {
+  el('transition-select').value = e.target.value;
+  el('transition-select').dispatchEvent(new Event('change'));
+});
+
+// Mantém os controles espelhados da aba Apresentar sincronizados
+function syncAbaApresentar(presentConnected) {
+  const clone = (srcId, dstId) => { el(dstId).value = el(srcId).value; };
+  clone('view-mode-select', 'view-mode-select-2');
+  clone('transition-select', 'transition-select-2');
+  // Sincroniza texto/estado dos botões de tela estendida
+  el('btn-present-toggle-2').textContent = el('btn-present-toggle').textContent;
+  el('btn-present-toggle-2').className = el('btn-present-toggle').className;
+  el('btn-blank-screen-2').textContent = el('btn-blank-screen').textContent;
+  el('btn-blank-screen-2').className = el('btn-blank-screen').className;
+  const colorHidden = el('btn-blank-color').classList.contains('hidden');
+  el('btn-blank-color-2').classList.toggle('hidden', colorHidden);
+  // Habilitar/desabilitar
+  const connected = presentConnected !== undefined ? presentConnected : !el('btn-blank-screen').disabled;
+  ['btn-present-toggle-2', 'btn-blank-screen-2', 'view-mode-select-2', 'transition-select-2'].forEach((id) => {
+    el(id).disabled = el(id.replace('-2', '')).disabled;
+  });
+  el('tool-laser').disabled = !connected;
+}
+
+// Ribbon: nome do arquivo
+function setRibbonFilename(name) {
+  el('ribbon-filename').textContent = name || 'Nenhum arquivo aberto';
+}
+
 // ---------- Blank Screen (tela preta/branca) ----------
 let blankMode = 'off';   // 'off' | 'on'
 let blankColor = 'black'; // 'black' | 'white'
@@ -170,6 +260,7 @@ function closePdf() {
   btnPdfToggle.textContent = '📄 Abrir PDF';
   btnPdfToggle.classList.remove('btn-danger-outline');
   btnPdfToggle.classList.add('btn-primary');
+  setRibbonFilename('');
 
   // Limpa a UI
   pageStage.classList.add('hidden');
@@ -247,6 +338,7 @@ viewModeSelect.addEventListener('change', (e) => {
       }
     }
   }
+  syncFooterModeButtons();
   renderPage();
   broadcastState();
 });
@@ -296,6 +388,8 @@ function closePresentation() {
   btnPresentToggle.classList.add('btn-primary');
   el('tool-laser').disabled = true;
   el('btn-blank-screen').disabled = true;
+  el('btn-blank-screen-2').disabled = true;
+  syncAbaApresentar(false);
   stopLaser();
   blankMode = 'off';
   el('btn-blank-screen').textContent = '⏸ Pausar Tela';
@@ -344,6 +438,7 @@ async function loadFile(file) {
   btnPdfToggle.textContent = '✕ Fechar PDF';
   btnPdfToggle.classList.remove('btn-primary');
   btnPdfToggle.classList.add('btn-danger-outline');
+  setRibbonFilename(file.name);
 
   await fitPage();
   generateThumbnails();
@@ -356,7 +451,12 @@ function enableControls(on) {
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
     'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
     'btn-redo', 'btn-clear-page', 'btn-present-toggle',
+    // rodapé
+    'footer-single', 'footer-double',
+    // aba Apresentar
+    'view-mode-select-2', 'transition-select-2', 'btn-present-toggle-2',
   ].forEach((id) => (el(id).disabled = !on));
+  if (on) syncFooterModeButtons();
   // btn-blank-screen e tool-laser só habilitados quando a tela estendida está conectada
 }
 
@@ -1025,6 +1125,8 @@ sync.on((msg) => {
     btnPresentToggle.classList.add('btn-danger-outline');
     el('tool-laser').disabled = false;
     el('btn-blank-screen').disabled = false;
+    el('btn-blank-screen-2').disabled = false;
+    syncAbaApresentar(true);
     const pages = visiblePages();
     const strokesByPage = {};
     pages.forEach((p) => (strokesByPage[p] = strokesFor(p)));
@@ -1048,7 +1150,9 @@ sync.on((msg) => {
     btnPresentToggle.classList.add('btn-primary');
     el('tool-laser').disabled = true;
     el('btn-blank-screen').disabled = true;
+    el('btn-blank-screen-2').disabled = true;
     el('btn-blank-color').classList.add('hidden');
+    syncAbaApresentar(false);
     stopLaser();
     blankMode = 'off';
     el('btn-blank-screen').textContent = '⏸ Pausar Tela';
