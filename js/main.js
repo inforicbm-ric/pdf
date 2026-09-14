@@ -112,25 +112,7 @@ el('transition-select-2').addEventListener('change', (e) => {
   el('transition-select').dispatchEvent(new Event('change'));
 });
 
-// Mantém os controles espelhados da aba Apresentar sincronizados
-function syncAbaApresentar(presentConnected) {
-  const clone = (srcId, dstId) => { el(dstId).value = el(srcId).value; };
-  clone('view-mode-select', 'view-mode-select-2');
-  clone('transition-select', 'transition-select-2');
-  // Sincroniza texto/estado dos botões de tela estendida
-  el('btn-present-toggle-2').textContent = el('btn-present-toggle').textContent;
-  el('btn-present-toggle-2').className = el('btn-present-toggle').className;
-  el('btn-blank-screen-2').textContent = el('btn-blank-screen').textContent;
-  el('btn-blank-screen-2').className = el('btn-blank-screen').className;
-  const colorHidden = el('btn-blank-color').classList.contains('hidden');
-  el('btn-blank-color-2').classList.toggle('hidden', colorHidden);
-  // Habilitar/desabilitar
-  const connected = presentConnected !== undefined ? presentConnected : !el('btn-blank-screen').disabled;
-  ['btn-present-toggle-2', 'btn-blank-screen-2', 'view-mode-select-2', 'transition-select-2'].forEach((id) => {
-    el(id).disabled = el(id.replace('-2', '')).disabled;
-  });
-  el('tool-laser').disabled = !connected;
-}
+
 
 // Ribbon: nome do arquivo
 function setRibbonFilename(name) {
@@ -388,8 +370,6 @@ function closePresentation() {
   btnPresentToggle.classList.add('btn-primary');
   el('tool-laser').disabled = true;
   el('btn-blank-screen').disabled = true;
-  el('btn-blank-screen-2').disabled = true;
-  syncAbaApresentar(false);
   stopLaser();
   blankMode = 'off';
   el('btn-blank-screen').textContent = '⏸ Pausar Tela';
@@ -453,8 +433,6 @@ function enableControls(on) {
     'btn-redo', 'btn-clear-page', 'btn-present-toggle',
     // rodapé
     'footer-single', 'footer-double',
-    // aba Apresentar
-    'view-mode-select-2', 'transition-select-2', 'btn-present-toggle-2',
   ].forEach((id) => (el(id).disabled = !on));
   if (on) syncFooterModeButtons();
   // btn-blank-screen e tool-laser só habilitados quando a tela estendida está conectada
@@ -1125,8 +1103,6 @@ sync.on((msg) => {
     btnPresentToggle.classList.add('btn-danger-outline');
     el('tool-laser').disabled = false;
     el('btn-blank-screen').disabled = false;
-    el('btn-blank-screen-2').disabled = false;
-    syncAbaApresentar(true);
     const pages = visiblePages();
     const strokesByPage = {};
     pages.forEach((p) => (strokesByPage[p] = strokesFor(p)));
@@ -1150,9 +1126,7 @@ sync.on((msg) => {
     btnPresentToggle.classList.add('btn-primary');
     el('tool-laser').disabled = true;
     el('btn-blank-screen').disabled = true;
-    el('btn-blank-screen-2').disabled = true;
     el('btn-blank-color').classList.add('hidden');
-    syncAbaApresentar(false);
     stopLaser();
     blankMode = 'off';
     el('btn-blank-screen').textContent = '⏸ Pausar Tela';
