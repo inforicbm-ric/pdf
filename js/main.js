@@ -95,22 +95,7 @@ function syncFooterModeButtons() {
   el('footer-double').classList.toggle('active', state.viewMode === 'double');
 }
 
-// ---------- Aba Apresentar — espelhar controles ----------
-// btn-present-toggle-2 espelha btn-present-toggle
-el('btn-present-toggle-2').addEventListener('click', () => el('btn-present-toggle').click());
-// btn-blank-screen-2 espelha btn-blank-screen
-el('btn-blank-screen-2').addEventListener('click', () => el('btn-blank-screen').click());
-el('btn-blank-color-2').addEventListener('click', () => el('btn-blank-color').click());
-// view-mode-select-2 espelha view-mode-select
-el('view-mode-select-2').addEventListener('change', (e) => {
-  el('view-mode-select').value = e.target.value;
-  el('view-mode-select').dispatchEvent(new Event('change'));
-});
-// transition-select-2 espelha transition-select
-el('transition-select-2').addEventListener('change', (e) => {
-  el('transition-select').value = e.target.value;
-  el('transition-select').dispatchEvent(new Event('change'));
-});
+
 
 
 
