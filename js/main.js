@@ -216,7 +216,9 @@ const btnPdfToggle = el('btn-pdf-toggle');
 
 btnPdfToggle.addEventListener('click', () => {
   if (!state.pdf) {
-    fileInput.click();
+    // Usar label para acionar o file input evita bloqueio do navegador
+    // em contexto de módulo ES (type="module")
+    el('file-input-label').click();
   } else {
     if (!confirm('Fechar o PDF atual? As anotações não salvas serão perdidas.')) return;
     closePdf();
