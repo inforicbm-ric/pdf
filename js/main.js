@@ -48,34 +48,68 @@ const presentDot = el('present-dot');
 const presentStatus = el('present-status');
 const sidebarFile = el('sidebar-file');
 
-// ---------- Ribbon — abas e recolher ----------
+// ---------- Ribbon — hover abre, mouse sai fecha ----------
+const ribbonTabs = document.querySelector('.ribbon-tabs');
+const ribbonPanels = document.querySelectorAll('.ribbon-panel');
+let ribbonLeaveTimer = null;
+let ribbonPinned = false;
+
+function activateTab(tabId) {
+  document.querySelectorAll('.ribbon-tab').forEach((t) => t.classList.remove('active'));
+  ribbonPanels.forEach((p) => p.classList.remove('active'));
+  const tab = document.querySelector(`.ribbon-tab[data-tab="${tabId}"]`);
+  if (tab) tab.classList.add('active');
+  const panel = el('tab-' + tabId);
+  if (panel) panel.classList.add('active');
+  document.querySelector('.app').classList.remove('ribbon-collapsed');
+  el('btn-collapse-ribbon').textContent = '▲';
+}
+
 document.querySelectorAll('.ribbon-tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    const tabId = tab.dataset.tab;
-    // Remove active de todas as abas e painéis
-    document.querySelectorAll('.ribbon-tab').forEach((t) => t.classList.remove('active'));
-    document.querySelectorAll('.ribbon-panel').forEach((p) => p.classList.remove('active'));
-    tab.classList.add('active');
-    el('tab-' + tabId).classList.add('active');
-    // Ao clicar numa aba, garante que a ribbon está expandida
-    document.querySelector('.app').classList.remove('ribbon-collapsed');
-    el('btn-collapse-ribbon').textContent = '▲';
+  tab.addEventListener('mouseenter', () => {
+    clearTimeout(ribbonLeaveTimer);
+    activateTab(tab.dataset.tab);
   });
+  tab.addEventListener('click', () => {
+    ribbonPinned = true;
+    activateTab(tab.dataset.tab);
+  });
+  tab.addEventListener('dblclick', () => {
+    ribbonPinned = false;
+    const collapsed = document.querySelector('.app').classList.toggle('ribbon-collapsed');
+    el('btn-collapse-ribbon').textContent = collapsed ? '▼' : '▲';
+  });
+});
+
+function scheduleRibbonClose() {
+  if (ribbonPinned) return;
+  ribbonLeaveTimer = setTimeout(() => {
+    document.querySelector('.app').classList.add('ribbon-collapsed');
+    el('btn-collapse-ribbon').textContent = '▼';
+  }, 350);
+}
+function cancelRibbonClose() { clearTimeout(ribbonLeaveTimer); }
+
+ribbonTabs.addEventListener('mouseleave', scheduleRibbonClose);
+ribbonTabs.addEventListener('mouseenter', cancelRibbonClose);
+ribbonPanels.forEach((p) => {
+  p.addEventListener('mouseleave', scheduleRibbonClose);
+  p.addEventListener('mouseenter', cancelRibbonClose);
 });
 
 el('btn-collapse-ribbon').addEventListener('click', () => {
-  const app = document.querySelector('.app');
-  const collapsed = app.classList.toggle('ribbon-collapsed');
+  const collapsed = document.querySelector('.app').classList.toggle('ribbon-collapsed');
+  ribbonPinned = !collapsed;
   el('btn-collapse-ribbon').textContent = collapsed ? '▼' : '▲';
 });
 
-// Duplo clique na aba ativa recolhe a ribbon
-document.querySelectorAll('.ribbon-tab').forEach((tab) => {
-  tab.addEventListener('dblclick', () => {
-    const app = document.querySelector('.app');
-    const collapsed = app.classList.toggle('ribbon-collapsed');
-    el('btn-collapse-ribbon').textContent = collapsed ? '▼' : '▲';
-  });
+// ---------- Tema claro/escuro ----------
+let isLightTheme = false;
+el('btn-toggle-theme').addEventListener('click', () => {
+  isLightTheme = !isLightTheme;
+  document.documentElement.classList.toggle('light', isLightTheme);
+  el('btn-toggle-theme').textContent = isLightTheme ? '🌒' : '🌙';
+  sync.send('theme', { light: isLightTheme });
 });
 
 // ---------- Botões do rodapé — modo de página ----------
@@ -246,7 +280,7 @@ function closePdf() {
   [
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
-    'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
+    'tool-highlight', 'tool-eraser', 'tool-text', 'pen-color', 'pen-size', 'btn-undo',
     'btn-redo', 'btn-clear-page',
   ].forEach((id) => (el(id).disabled = true));
 
@@ -322,6 +356,9 @@ el('tool-select').addEventListener('click', () => setTool('select'));
 el('tool-pen').addEventListener('click', () => setTool('pen'));
 el('tool-highlight').addEventListener('click', () => setTool('highlight'));
 el('tool-eraser').addEventListener('click', () => setTool('eraser'));
+el('tool-text').addEventListener('click', () => setTool('text'));
+el('btn-rotate-cw').addEventListener('click', () => rotatePage(90));
+el('btn-rotate-ccw').addEventListener('click', () => rotatePage(-90));
 el('pen-color').addEventListener('input', (e) => {
   state.color = e.target.value;
   // Atualiza a cor do ícone de gota/balde em tempo real
@@ -379,6 +416,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'p') setTool('pen');
   if (e.key.toLowerCase() === 'h') setTool('highlight');
   if (e.key.toLowerCase() === 'e') setTool('eraser');
+  if (e.key.toLowerCase() === 't') setTool('text');
   if (e.key.toLowerCase() === 'v') setTool('select');
   if (e.key.toLowerCase() === 'l') { el('tool-laser').click(); }
 });
@@ -417,8 +455,8 @@ function enableControls(on) {
   [
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
-    'tool-highlight', 'tool-eraser', 'pen-color', 'pen-size', 'btn-undo',
-    'btn-redo', 'btn-clear-page', 'btn-present-toggle',
+    'tool-highlight', 'tool-eraser', 'tool-text', 'pen-color', 'pen-size', 'btn-undo',
+    'btn-redo', 'btn-clear-page', 'btn-present-toggle', 'btn-rotate-cw', 'btn-rotate-ccw',
     // rodapé
     'footer-single', 'footer-double',
   ].forEach((id) => (el(id).disabled = !on));
@@ -496,8 +534,8 @@ function visiblePages() {
 // no Chrome. Nunca deixa nenhum lado passar disso, não importa o zoom pedido.
 const MAX_CANVAS_DIM = 8000;
 
-function safeViewport(page, scale) {
-  let viewport = page.getViewport({ scale });
+function safeViewport(page, scale, rotation = 0) {
+  let viewport = page.getViewport({ scale, rotation });
   const biggest = Math.max(viewport.width, viewport.height);
   if (biggest > MAX_CANVAS_DIM) {
     viewport = page.getViewport({ scale: scale * (MAX_CANVAS_DIM / biggest) });
@@ -525,7 +563,8 @@ async function renderPage() {
     const page = await state.pdf.getPage(pNum);
     if (myGeneration !== renderGeneration) return; // uma chamada mais nova já assumiu
 
-    const viewport = safeViewport(page, state.scale);
+    const rot = pageRotations.get(pNum) || 0;
+    const viewport = safeViewport(page, state.scale, rot);
     slot.pdfCanvas.width = slot.drawCanvas.width = viewport.width;
     slot.pdfCanvas.height = slot.drawCanvas.height = viewport.height;
 
@@ -883,7 +922,7 @@ viewerWrap.addEventListener('pointerup', async (e) => {
 
 function setTool(tool) {
   state.tool = tool;
-  ['select', 'pen', 'highlight', 'eraser'].forEach((t) =>
+  ['select', 'pen', 'highlight', 'eraser', 'text'].forEach((t) =>
     el('tool-' + t).classList.toggle('active', t === tool)
   );
   const cursor = tool === 'select' ? 'default' : 'crosshair';
@@ -959,6 +998,9 @@ function onPointerDown(e, slot) {
     state.currentHighlightRect = { slot, startX: x, startY: y, x, y };
   } else if (state.tool === 'eraser') {
     eraseAt(slot, x, y);
+  } else if (state.tool === 'text') {
+    const div = createTextAnnot(slot, x, y, '');
+    return;
   }
 }
 

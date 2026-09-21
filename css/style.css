@@ -675,3 +675,60 @@ button {
 
 /* Remover barras antigas (toolbar/status-bar) */
 .toolbar, .toolbar-secondary, .status-bar { display: none !important; }
+
+/* ── Modo claro ─────────────────────────────────────── */
+:root.light {
+  --bg: #f0f2f5;
+  --panel: #ffffff;
+  --panel-2: #e8ecf0;
+  --border: #c8d0da;
+  --text: #1a2236;
+  --text-dim: #5a6478;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+}
+:root.light .viewer-wrap { background: #d8dce2; }
+:root.light .ribbon-tabs,
+:root.light .footer-bar { background: #e0e5ed; }
+:root.light .page-slot { box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+:root.light .status-dot { background: #94a3b8; }
+:root.light .status-dot.on { background: #16a34a; box-shadow: 0 0 6px #16a34a; }
+
+/* ── Botão tema ─────────────────────────────────────── */
+.ribbon-theme-btn {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px; cursor: pointer; margin-left: 4px;
+  transition: background .12s;
+}
+.ribbon-theme-btn:hover { background: var(--panel-2); }
+
+/* ── Anotações de texto flutuantes ──────────────────── */
+.text-annot-wrap {
+  position: absolute;
+  z-index: 20;
+}
+.text-annot {
+  min-width: 80px; min-height: 28px;
+  background: #fffde7;
+  border: 1.5px solid #f9a825;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px; color: #333;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  cursor: text; outline: none;
+  line-height: 1.4; white-space: pre-wrap; word-break: break-word;
+}
+.text-annot:focus { border-color: var(--accent); }
+.text-annot-del {
+  position: absolute; top: -9px; right: -9px;
+  width: 18px; height: 18px;
+  border-radius: 50%; background: #ef4444; color: #fff;
+  font-size: 11px; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s;
+}
+.text-annot-wrap:hover .text-annot-del { opacity: 1; }

@@ -17,6 +17,7 @@
     <button class="ribbon-tab" data-tab="anotar">Anotar</button>
     <div class="ribbon-spacer"></div>
     <span id="ribbon-filename" class="ribbon-filename">Nenhum arquivo aberto</span>
+    <button class="ribbon-theme-btn" id="btn-toggle-theme" title="Alternar modo claro/escuro">🌙</button>
     <button class="ribbon-collapse-btn" id="btn-collapse-ribbon" title="Recolher/expandir ribbon">▲</button>
   </div>
 
@@ -80,8 +81,22 @@
             <path d="M1 12 L15 12 L17 14 L3 14 Z" fill="currentColor" fill-opacity="0.15"/>
           </svg>
         </button>
+        <button class="icon-btn" id="tool-text" title="Texto — clique no PDF para digitar anotação (T)" disabled>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="14" height="14" rx="2" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.3"/>
+            <text x="4.5" y="13.5" font-size="10" font-weight="bold" fill="currentColor" font-family="serif">A</text>
+          </svg>
+        </button>
       </div>
       <div class="ribbon-section-label">Ferramentas</div>
+    </div>
+    <div class="ribbon-sep"></div>
+    <div class="ribbon-section">
+      <div class="ribbon-section-btns">
+        <button class="icon-btn" id="btn-rotate-ccw" title="Girar 90° para a esquerda" disabled style="font-size:18px">↺</button>
+        <button class="icon-btn" id="btn-rotate-cw" title="Girar 90° para a direita" disabled style="font-size:18px">↻</button>
+      </div>
+      <div class="ribbon-section-label">Girar</div>
     </div>
     <div class="ribbon-sep"></div>
     <div class="ribbon-section">

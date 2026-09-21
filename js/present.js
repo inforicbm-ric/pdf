@@ -44,8 +44,8 @@ let navGeneration = 0; // detecta mensagens 'state' atropeladas por uma mais nov
 // no Chrome. Nunca deixa nenhum lado passar disso, não importa o zoom pedido.
 const MAX_CANVAS_DIM = 8000;
 
-function safeViewport(page, scale) {
-  let viewport = page.getViewport({ scale });
+function safeViewport(page, scale, rotation = 0) {
+  let viewport = page.getViewport({ scale, rotation });
   const biggest = Math.max(viewport.width, viewport.height);
   if (biggest > MAX_CANVAS_DIM) {
     viewport = page.getViewport({ scale: scale * (MAX_CANVAS_DIM / biggest) });
@@ -155,8 +155,8 @@ async function renderPage() {
     slot.pageNum = pNum;
     const page = await state.pdf.getPage(pNum);
     if (myGeneration !== renderGeneration) return;
-
-    const viewport = safeViewport(page, effectiveScale);
+    const rot = presentRotations.get(pNum) || 0;
+    const viewport = safeViewport(page, effectiveScale, rot);
     slot.pdfCanvas.width = slot.drawCanvas.width = viewport.width;
     slot.pdfCanvas.height = slot.drawCanvas.height = viewport.height;
 
@@ -174,6 +174,7 @@ async function renderPage() {
     }
     if (myGeneration !== renderGeneration) return;
     redrawSlot(slot);
+    renderPresentTextAnnots(slot);
   }
 
   applyStagePosition();
@@ -273,6 +274,28 @@ window.addEventListener('resize', async () => {
   if (state.pdf) await renderPage();
 });
 
+
+// Rotações e anotações de texto recebidas do controle
+const presentRotations = new Map();
+const presentTextAnnots = new Map();
+
+function renderPresentTextAnnots(slot) {
+  slot.root.querySelectorAll('.text-annot-wrap').forEach((e) => e.remove());
+  const annots = presentTextAnnots.get(slot.pageNum) || [];
+  annots.forEach((a) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'text-annot-wrap';
+    wrap.style.left = (a.x * 100) + '%';
+    wrap.style.top = (a.y * 100) + '%';
+    const div = document.createElement('div');
+    div.className = 'text-annot';
+    div.style.cursor = 'default';
+    div.textContent = a.text;
+    wrap.appendChild(div);
+    slot.root.appendChild(wrap);
+  });
+}
+
 sync.on(async (msg) => {
   switch (msg.type) {
     case 'pdf-closed':
@@ -323,6 +346,24 @@ sync.on(async (msg) => {
     }
     case 'transition': {
       state.transition = msg.mode;
+      break;
+    }
+    case 'theme': {
+      document.documentElement.classList.toggle('light', msg.light);
+      break;
+    }
+    case 'rotate': {
+      // Aplica rotações recebidas e re-renderiza
+      if (msg.rotations) {
+        Object.entries(msg.rotations).forEach(([p, r]) => presentRotations.set(Number(p), r));
+      }
+      await renderPage();
+      break;
+    }
+    case 'text-annots': {
+      presentTextAnnots.set(msg.page, msg.annots || []);
+      const slot = slots.find((s) => s.pageNum === msg.page);
+      if (slot) renderPresentTextAnnots(slot);
       break;
     }
     case 'blank-screen': {
