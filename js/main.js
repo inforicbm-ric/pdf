@@ -534,6 +534,65 @@ function visiblePages() {
 // no Chrome. Nunca deixa nenhum lado passar disso, não importa o zoom pedido.
 const MAX_CANVAS_DIM = 8000;
 
+// ---------- Rotação de página ----------
+const pageRotations = new Map(); // pageNum -> graus (0,90,180,270)
+
+function rotatePage(delta) {
+  if (!state.pdf) return;
+  const pages = visiblePages();
+  pages.forEach((pNum) => {
+    const cur = pageRotations.get(pNum) || 0;
+    pageRotations.set(pNum, (cur + delta + 360) % 360);
+  });
+  renderPage();
+  sync.send('rotate', { rotations: Object.fromEntries(pageRotations) });
+}
+
+// ---------- Anotações de texto flutuantes ----------
+const textAnnotations = new Map();
+let textAnnotIdCounter = 0;
+
+function createTextAnnot(slot, xFrac, yFrac) {
+  const id = ++textAnnotIdCounter;
+  const annots = textAnnotations.get(slot.pageNum) || [];
+  annots.push({ id, x: xFrac, y: yFrac, text: '' });
+  textAnnotations.set(slot.pageNum, annots);
+  renderTextAnnots(slot);
+  sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
+}
+
+function renderTextAnnots(slot) {
+  slot.root.querySelectorAll('.text-annot-wrap').forEach((e) => e.remove());
+  const annots = textAnnotations.get(slot.pageNum) || [];
+  annots.forEach((a) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'text-annot-wrap';
+    wrap.style.left = (a.x * 100) + '%';
+    wrap.style.top = (a.y * 100) + '%';
+    const div = document.createElement('div');
+    div.className = 'text-annot';
+    div.contentEditable = 'true';
+    div.textContent = a.text;
+    div.addEventListener('input', () => {
+      a.text = div.textContent;
+      sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
+    });
+    const del = document.createElement('button');
+    del.className = 'text-annot-del';
+    del.textContent = '×';
+    del.addEventListener('click', () => {
+      const list = textAnnotations.get(slot.pageNum) || [];
+      textAnnotations.set(slot.pageNum, list.filter((x) => x.id !== a.id));
+      renderTextAnnots(slot);
+      sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
+    });
+    wrap.appendChild(div);
+    wrap.appendChild(del);
+    slot.root.appendChild(wrap);
+    if (!a.text) div.focus();
+  });
+}
+
 function safeViewport(page, scale, rotation = 0) {
   let viewport = page.getViewport({ scale, rotation });
   const biggest = Math.max(viewport.width, viewport.height);
