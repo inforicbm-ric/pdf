@@ -285,12 +285,17 @@ function renderPresentTextAnnots(slot) {
   annots.forEach((a) => {
     const wrap = document.createElement('div');
     wrap.className = 'text-annot-wrap';
-    wrap.style.left = (a.x * 100) + '%';
-    wrap.style.top = (a.y * 100) + '%';
+    wrap.style.position = 'absolute';
+    // Usa pixels absolutos baseados no tamanho real do canvas desta tela
+    wrap.style.left = (a.x * slot.pdfCanvas.offsetWidth) + 'px';
+    wrap.style.top = (a.y * slot.pdfCanvas.offsetHeight) + 'px';
     const div = document.createElement('div');
     div.className = 'text-annot';
     div.style.cursor = 'default';
+    div.style.color = a.color || '#cc0000';
+    div.style.fontSize = (a.fontSize || 14) + 'px';
     div.textContent = a.text;
+    // Não mostra alça nem botão de deletar na tela estendida
     wrap.appendChild(div);
     slot.root.appendChild(wrap);
   });

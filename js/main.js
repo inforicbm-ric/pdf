@@ -358,7 +358,6 @@ el('tool-highlight').addEventListener('click', () => setTool('highlight'));
 el('tool-eraser').addEventListener('click', () => setTool('eraser'));
 el('tool-text').addEventListener('click', () => setTool('text'));
 el('btn-rotate-cw').addEventListener('click', () => rotatePage(90));
-el('btn-rotate-ccw').addEventListener('click', () => rotatePage(-90));
 el('pen-color').addEventListener('input', (e) => {
   state.color = e.target.value;
   // Atualiza a cor do ícone de gota/balde em tempo real
@@ -456,7 +455,7 @@ function enableControls(on) {
     'btn-prev', 'btn-next', 'page-input', 'btn-zoom-in', 'btn-zoom-out', 'zoom-select',
     'view-mode-select', 'transition-select', 'tool-select', 'tool-pen',
     'tool-highlight', 'tool-eraser', 'tool-text', 'pen-color', 'pen-size', 'btn-undo',
-    'btn-redo', 'btn-clear-page', 'btn-present-toggle', 'btn-rotate-cw', 'btn-rotate-ccw',
+    'btn-redo', 'btn-clear-page', 'btn-present-toggle', 'btn-rotate-cw',
     // rodapé
     'footer-single', 'footer-double',
   ].forEach((id) => (el(id).disabled = !on));
@@ -544,6 +543,7 @@ function rotatePage(delta) {
     const cur = pageRotations.get(pNum) || 0;
     pageRotations.set(pNum, (cur + delta + 360) % 360);
   });
+  // Ao girar, limpa as anotações de draw (ficam desalinhadas com a nova orientação)
   renderPage();
   sync.send('rotate', { rotations: Object.fromEntries(pageRotations) });
 }
@@ -555,7 +555,8 @@ let textAnnotIdCounter = 0;
 function createTextAnnot(slot, xFrac, yFrac) {
   const id = ++textAnnotIdCounter;
   const annots = textAnnotations.get(slot.pageNum) || [];
-  annots.push({ id, x: xFrac, y: yFrac, text: '' });
+  // Armazena em fração do canvas (0–1) para ser independente de zoom
+  annots.push({ id, x: xFrac, y: yFrac, text: '', color: '#cc0000', fontSize: 14 });
   textAnnotations.set(slot.pageNum, annots);
   renderTextAnnots(slot);
   sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
@@ -567,16 +568,32 @@ function renderTextAnnots(slot) {
   annots.forEach((a) => {
     const wrap = document.createElement('div');
     wrap.className = 'text-annot-wrap';
-    wrap.style.left = (a.x * 100) + '%';
-    wrap.style.top = (a.y * 100) + '%';
+    // Posiciona em pixels absolutos dentro do slot usando a fração do canvas
+    wrap.style.position = 'absolute';
+    wrap.style.left = (a.x * slot.pdfCanvas.offsetWidth) + 'px';
+    wrap.style.top = (a.y * slot.pdfCanvas.offsetHeight) + 'px';
+
+    // Alça de arraste (ícone ⠿)
+    const handle = document.createElement('div');
+    handle.className = 'text-annot-handle';
+    handle.textContent = '⠿';
+    handle.title = 'Arraste para mover';
+
+    // Área de texto — transparente, sem borda
     const div = document.createElement('div');
     div.className = 'text-annot';
     div.contentEditable = 'true';
     div.textContent = a.text;
+    div.style.color = a.color || '#cc0000';
+    div.style.fontSize = (a.fontSize || 14) + 'px';
     div.addEventListener('input', () => {
-      a.text = div.textContent;
+      a.text = div.innerText;
       sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
     });
+    // Impede que Enter feche o contentEditable
+    div.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.stopPropagation(); });
+
+    // Botão deletar
     const del = document.createElement('button');
     del.className = 'text-annot-del';
     del.textContent = '×';
@@ -586,10 +603,37 @@ function renderTextAnnots(slot) {
       renderTextAnnots(slot);
       sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
     });
+
+    // Arraste pela ALÇA (não pelo texto)
+    handle.addEventListener('mousedown', (ev) => {
+      ev.preventDefault();
+      const startX = ev.clientX - wrap.offsetLeft;
+      const startY = ev.clientY - wrap.offsetTop;
+      const slotW = slot.pdfCanvas.offsetWidth;
+      const slotH = slot.pdfCanvas.offsetHeight;
+      const onMove = (em) => {
+        const newLeft = em.clientX - startX;
+        const newTop = em.clientY - startY;
+        wrap.style.left = newLeft + 'px';
+        wrap.style.top = newTop + 'px';
+        a.x = newLeft / slotW;
+        a.y = newTop / slotH;
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    wrap.appendChild(handle);
     wrap.appendChild(div);
     wrap.appendChild(del);
     slot.root.appendChild(wrap);
-    if (!a.text) div.focus();
+    // Foca automaticamente ao criar nova anotação vazia
+    if (!a.text) setTimeout(() => div.focus(), 50);
   });
 }
 
@@ -597,7 +641,8 @@ function safeViewport(page, scale, rotation = 0) {
   let viewport = page.getViewport({ scale, rotation });
   const biggest = Math.max(viewport.width, viewport.height);
   if (biggest > MAX_CANVAS_DIM) {
-    viewport = page.getViewport({ scale: scale * (MAX_CANVAS_DIM / biggest) });
+    // Mantém a rotação ao reduzir a escala
+    viewport = page.getViewport({ scale: scale * (MAX_CANVAS_DIM / biggest), rotation });
   }
   return viewport;
 }
@@ -1058,7 +1103,8 @@ function onPointerDown(e, slot) {
   } else if (state.tool === 'eraser') {
     eraseAt(slot, x, y);
   } else if (state.tool === 'text') {
-    const div = createTextAnnot(slot, x, y, '');
+    // x,y já são frações do canvas (normPoint usa getBoundingClientRect) — usa direto
+    createTextAnnot(slot, x, y);
     return;
   }
 }

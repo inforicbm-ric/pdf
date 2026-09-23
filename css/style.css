@@ -710,24 +710,47 @@ button {
 .text-annot-wrap {
   position: absolute;
   z-index: 20;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 2px;
 }
 .text-annot {
-  min-width: 80px; min-height: 28px;
-  background: #fffde7;
-  border: 1.5px solid #f9a825;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 13px; color: #333;
-  box-shadow: 0 2px 8px rgba(0,0,0,.2);
-  cursor: text; outline: none;
-  line-height: 1.4; white-space: pre-wrap; word-break: break-word;
+  min-width: 60px; min-height: 20px;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 2px 4px;
+  font-size: 14px;
+  color: var(--annot-color, #cc0000);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: text;
+  resize: none;
+  overflow: hidden;
 }
-.text-annot:focus { border-color: var(--accent); }
+.text-annot:focus {
+  box-shadow: 0 0 0 1.5px rgba(59,130,246,.4);
+  border-radius: 3px;
+}
+.text-annot-handle {
+  width: 12px; min-height: 20px;
+  cursor: move;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 3px;
+  opacity: 0;
+  color: #888;
+  font-size: 10px;
+  user-select: none;
+  transition: opacity .15s;
+}
+.text-annot-wrap:hover .text-annot-handle { opacity: 1; }
 .text-annot-del {
-  position: absolute; top: -9px; right: -9px;
-  width: 18px; height: 18px;
+  position: absolute; top: -8px; right: -8px;
+  width: 16px; height: 16px;
   border-radius: 50%; background: #ef4444; color: #fff;
-  font-size: 11px; border: none; cursor: pointer;
+  font-size: 10px; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity .15s;
 }
