@@ -556,7 +556,9 @@ function createTextAnnot(slot, xFrac, yFrac) {
   const id = ++textAnnotIdCounter;
   const annots = textAnnotations.get(slot.pageNum) || [];
   // Armazena em fração do canvas (0–1) para ser independente de zoom
-  annots.push({ id, x: xFrac, y: yFrac, text: '', color: '#cc0000', fontSize: 14 });
+  const fontSize = 10 + state.size * 1.5; // pen-size 1-20 → 11.5-40px
+  const color = el('pen-color').value || '#cc0000';
+  annots.push({ id, x: xFrac, y: yFrac, text: '', color, fontSize });
   textAnnotations.set(slot.pageNum, annots);
   renderTextAnnots(slot);
   sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
@@ -565,59 +567,54 @@ function createTextAnnot(slot, xFrac, yFrac) {
 function renderTextAnnots(slot) {
   slot.root.querySelectorAll('.text-annot-wrap').forEach((e) => e.remove());
   const annots = textAnnotations.get(slot.pageNum) || [];
+  const canvasW = slot.pdfCanvas.offsetWidth || slot.pdfCanvas.width;
+  const canvasH = slot.pdfCanvas.offsetHeight || slot.pdfCanvas.height;
   annots.forEach((a) => {
     const wrap = document.createElement('div');
+    wrap.style.cssText = `position:absolute;left:${a.x*canvasW}px;top:${a.y*canvasH}px;z-index:20;display:inline-flex;align-items:flex-start;gap:2px;pointer-events:auto;`;
     wrap.className = 'text-annot-wrap';
-    // Posiciona em pixels absolutos dentro do slot usando a fração do canvas
-    wrap.style.position = 'absolute';
-    wrap.style.left = (a.x * slot.pdfCanvas.offsetWidth) + 'px';
-    wrap.style.top = (a.y * slot.pdfCanvas.offsetHeight) + 'px';
 
-    // Alça de arraste (ícone ⠿)
     const handle = document.createElement('div');
-    handle.className = 'text-annot-handle';
     handle.textContent = '⠿';
-    handle.title = 'Arraste para mover';
+    handle.title = 'Arrastar';
+    handle.style.cssText = 'width:14px;cursor:move;padding-top:2px;color:#999;font-size:12px;user-select:none;opacity:0;flex-shrink:0;';
 
-    // Área de texto — transparente, sem borda
     const div = document.createElement('div');
-    div.className = 'text-annot';
     div.contentEditable = 'true';
+    div.style.cssText = `background:transparent;border:none;outline:none;padding:1px 3px;font-weight:600;line-height:1.4;white-space:pre-wrap;word-break:break-word;cursor:text;min-width:40px;color:${a.color||'#cc0000'};font-size:${a.fontSize||14}px;`;
     div.textContent = a.text;
-    div.style.color = a.color || '#cc0000';
-    div.style.fontSize = (a.fontSize || 14) + 'px';
     div.addEventListener('input', () => {
       a.text = div.innerText;
       sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
     });
-    // Impede que Enter feche o contentEditable
-    div.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.stopPropagation(); });
+    div.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') ev.stopPropagation();
+      if (ev.key === 'Escape') div.blur();
+      if (ev.ctrlKey && ev.key === ']') { a.fontSize = Math.min((a.fontSize||14)+2,72); div.style.fontSize=a.fontSize+'px'; sync.send('text-annots',{page:slot.pageNum,annots:textAnnotations.get(slot.pageNum)}); ev.preventDefault(); }
+      if (ev.ctrlKey && ev.key === '[') { a.fontSize = Math.max((a.fontSize||14)-2,8); div.style.fontSize=a.fontSize+'px'; sync.send('text-annots',{page:slot.pageNum,annots:textAnnotations.get(slot.pageNum)}); ev.preventDefault(); }
+    });
 
-    // Botão deletar
     const del = document.createElement('button');
-    del.className = 'text-annot-del';
     del.textContent = '×';
+    del.style.cssText = 'position:absolute;top:-7px;right:-7px;width:15px;height:15px;border-radius:50%;background:#ef4444;color:#fff;font-size:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;';
     del.addEventListener('click', () => {
-      const list = textAnnotations.get(slot.pageNum) || [];
-      textAnnotations.set(slot.pageNum, list.filter((x) => x.id !== a.id));
+      textAnnotations.set(slot.pageNum, (textAnnotations.get(slot.pageNum)||[]).filter(x=>x.id!==a.id));
       renderTextAnnots(slot);
       sync.send('text-annots', { page: slot.pageNum, annots: textAnnotations.get(slot.pageNum) });
     });
 
-    // Arraste pela ALÇA (não pelo texto)
+    wrap.addEventListener('mouseenter', () => { handle.style.opacity='1'; del.style.opacity='1'; });
+    wrap.addEventListener('mouseleave', () => { handle.style.opacity='0'; del.style.opacity='0'; });
+
     handle.addEventListener('mousedown', (ev) => {
       ev.preventDefault();
-      const startX = ev.clientX - wrap.offsetLeft;
-      const startY = ev.clientY - wrap.offsetTop;
-      const slotW = slot.pdfCanvas.offsetWidth;
-      const slotH = slot.pdfCanvas.offsetHeight;
+      const ox = ev.clientX - wrap.offsetLeft;
+      const oy = ev.clientY - wrap.offsetTop;
       const onMove = (em) => {
-        const newLeft = em.clientX - startX;
-        const newTop = em.clientY - startY;
-        wrap.style.left = newLeft + 'px';
-        wrap.style.top = newTop + 'px';
-        a.x = newLeft / slotW;
-        a.y = newTop / slotH;
+        const nl = Math.max(0, em.clientX - ox);
+        const nt = Math.max(0, em.clientY - oy);
+        wrap.style.left = nl+'px'; wrap.style.top = nt+'px';
+        a.x = nl/canvasW; a.y = nt/canvasH;
       };
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);
@@ -632,8 +629,7 @@ function renderTextAnnots(slot) {
     wrap.appendChild(div);
     wrap.appendChild(del);
     slot.root.appendChild(wrap);
-    // Foca automaticamente ao criar nova anotação vazia
-    if (!a.text) setTimeout(() => div.focus(), 50);
+    if (!a.text) setTimeout(() => div.focus(), 30);
   });
 }
 
@@ -1103,9 +1099,10 @@ function onPointerDown(e, slot) {
   } else if (state.tool === 'eraser') {
     eraseAt(slot, x, y);
   } else if (state.tool === 'text') {
-    // x,y já são frações do canvas (normPoint usa getBoundingClientRect) — usa direto
     createTextAnnot(slot, x, y);
-    return;
+    // Reseta estado imediatamente — não entra em modo de desenho
+    state.drawing = false;
+    state.activeSlot = null;
   }
 }
 
